@@ -233,7 +233,7 @@ Clip::Ptr duplicateClip (const Clip& c)
     return {};
 }
 
-SelectableList splitClips (const SelectableList& clips, double time)
+SelectableList splitClips (const SelectableList& clips, TimePosition time)
 {
     SelectableList newClips;
 
@@ -246,7 +246,7 @@ SelectableList splitClips (const SelectableList& clips, double time)
     return newClips;
 }
 
-void deleteRegionOfClip (Clip& c, EditTimeRange timeRangeToDelete)
+void deleteRegionOfClip (Clip& c, TimeRange timeRangeToDelete)
 {
     CRASH_TRACER
 
@@ -276,7 +276,7 @@ void deleteRegionOfClip (Clip& c, EditTimeRange timeRangeToDelete)
     }
 }
 
-void deleteRegionOfSelectedClips (SelectionManager& selectionManager, EditTimeRange rangeToDelete,
+void deleteRegionOfSelectedClips (SelectionManager& selectionManager, TimeRange rangeToDelete,
                                   CloseGap closeGap, bool moveAllSubsequentClipsOnTrack)
 {
     Clip::Array selectedClips;
@@ -325,7 +325,7 @@ void deleteRegionOfSelectedClips (SelectionManager& selectionManager, EditTimeRa
 
     if (closeGap == CloseGap::yes)
     {
-        auto centreTime = (rangeToDelete.getStart() + rangeToDelete.getEnd()) * 0.5;
+        const auto centreTime = rangeToDelete.getCentre();
 
         if (moveAllSubsequentClipsOnTrack)
         {
@@ -343,7 +343,7 @@ void deleteRegionOfSelectedClips (SelectionManager& selectionManager, EditTimeRa
     }
 }
 
-void deleteRegionOfTracks (Edit& edit, EditTimeRange rangeToDelete, bool onlySelected, CloseGap closeGap, SelectionManager* selectionManager)
+void deleteRegionOfTracks (Edit& edit, TimeRange rangeToDelete, bool onlySelected, CloseGap closeGap, SelectionManager* selectionManager)
 {
     juce::Array<Track*> tracks;
 
@@ -366,7 +366,7 @@ void deleteRegionOfTracks (Edit& edit, EditTimeRange rangeToDelete, bool onlySel
         tracks = getAllTracks (edit);
     }
 
-    if (tracks.size() == 0 || rangeToDelete.getLength() <= 0.0001)
+    if (tracks.size() == 0 || rangeToDelete.getLength() <= TimeDuration::fromSeconds (0.0001))
         return;
 
     std::unique_ptr<SelectionManager::ScopedSelectionState> selectionState;
@@ -414,7 +414,7 @@ void deleteRegionOfTracks (Edit& edit, EditTimeRange rangeToDelete, bool onlySel
             juce::Array<Clip*> clipsToRemove;
 
             for (auto& c : t->getClips())
-                if (c->getPosition().getLength() < 0.0001)
+                if (c->getPosition().getLength() < TimeDuration::fromSeconds (0.0001))
                     clipsToRemove.add (c);
 
             for (auto c : clipsToRemove)
@@ -637,7 +637,7 @@ void visitAllTrackItems (const Edit& edit, std::function<bool (TrackItem&)> f)
                                   });
 }
 
-EditTimeRange getTimeRangeForSelectedItems (const SelectableList& selected)
+TimeRange getTimeRangeForSelectedItems (const SelectableList& selected)
 {
     auto items = selected.getItemsOfType<TrackItem>();
 
@@ -692,9 +692,9 @@ juce::Result mergeMidiClips (juce::Array<MidiClip*> clips)
                 newClip->setGrooveTemplate (first->getGrooveTemplate());
                 newClip->setMidiChannel (first->getMidiChannel());
 
-                double startBeat = 1.0e10;
-                double startTime = 1.0e10;
-                double endTime = 0.0;
+                const auto startBeat = BeatPosition::fromBeats (1.0e10);
+                const auto startTime = TimePosition::fromSeconds (1.0e10);
+                const auto endTime = TimePosition();
 
                 for (auto c : clips)
                 {
@@ -714,12 +714,12 @@ juce::Result mergeMidiClips (juce::Array<MidiClip*> clips)
                     auto offset = c->getPosition().getOffset() * c->edit.tempoSequence.getBeatsPerSecondAt (c->getPosition().getStart(), true);
 
                     sourceList.trimOutside (offset, offset + c->getLengthInBeats(), nullptr);
-                    sourceList.moveAllBeatPositions (c->getStartBeat() - startBeat - offset, nullptr);
+                    sourceList.moveAllBeatPositions (toDuration (c->getStartBeat() - startBeat - offset), nullptr);
 
                     destinationList.addFrom (sourceList, nullptr);
                 }
 
-                newClip->setPosition ({ { startTime, endTime }, 0.0 });
+                newClip->setPosition ({ { startTime, endTime }, TimePosition() });
                 newClip->getSequence().addFrom (destinationList, &track->edit.getUndoManager());
 
                 for (int i = clips.size(); --i >= 0;)

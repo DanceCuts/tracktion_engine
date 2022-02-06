@@ -601,7 +601,7 @@ PatternGenerator::ProgressionItem::ProgressionItem (PatternGenerator& g, const j
 
     chordName.referTo (state, IDs::chordName, um);
     pitches.referTo (state, IDs::pitches, um);
-    lengthInBeats.referTo (state, IDs::length, um, 4);
+    lengthInBeats.referTo (state, IDs::length, um, BeatDuration::fromBeats (4));
     octave.referTo (state, IDs::octave, um);
     inversion.referTo (state, IDs::inversion, um);
 
@@ -696,7 +696,7 @@ bool PatternGenerator::ProgressionItem::isRomanNumeral() const
 
 juce::String PatternGenerator::ProgressionItem::getChordSymbol()
 {
-    double beat = 0;
+    BeatPosition beat;
 
     for (auto itm : generator.getChordProgression())
     {
@@ -835,12 +835,12 @@ void PatternGenerator::editFinishedLoading()
         autoUpdateManager = std::make_unique<AutoUpdateManager> (*this);
 }
 
-double PatternGenerator::getMinimumChordLength() const
+BeatDuration PatternGenerator::getMinimumChordLength() const
 {
-    return 1.0;
+    return BeatDuration::fromBeats (1.0);
 }
 
-double PatternGenerator::getMaximumChordLength() const
+BeatDuration PatternGenerator::getMaximumChordLength() const
 {
     switch (mode)
     {
@@ -850,7 +850,7 @@ double PatternGenerator::getMaximumChordLength() const
         case Mode::melody:
         case Mode::off:
         default:
-            return 1024.0;
+            return BeatDuration::fromBeats (1024.0);
     }
 }
 
@@ -949,7 +949,7 @@ void PatternGenerator::valueTreePropertyChanged (juce::ValueTree&, const juce::I
     }
 }
 
-ChordClip* PatternGenerator::getChordClipAt (double t) const
+ChordClip* PatternGenerator::getChordClipAt (TimePosition t) const
 {
     for (auto c : clip.edit.getChordTrack()->getClips())
         if (c->getPosition().time.contains (t))
@@ -959,7 +959,7 @@ ChordClip* PatternGenerator::getChordClipAt (double t) const
     return {};
 }
 
-Scale PatternGenerator::getScaleAtBeat (double beat) const
+Scale PatternGenerator::getScaleAtBeat (BeatPosition beat) const
 {
     Scale scale;
 
@@ -1000,7 +1000,7 @@ Scale PatternGenerator::getScaleAtBeat (double beat) const
     return scale;
 }
 
-int PatternGenerator::getNoteAtBeat (double beat) const
+int PatternGenerator::getNoteAtBeat (BeatPosition beat) const
 {
     if (dynamic_cast<ChordClip*>(&clip) != nullptr)
     {

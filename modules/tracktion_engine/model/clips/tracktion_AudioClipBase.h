@@ -162,7 +162,7 @@ public:
     */
     bool setFadeIn (double length);
     /** Returns the fade in duration in seconds. */
-    double getFadeIn() const;
+    TimeDuration getFadeIn() const;
 
     /** Sets the fade out duration in seconds.
         If the duration is longer than the clip or overlaps the fade in, this will
@@ -170,7 +170,7 @@ public:
     */
     bool setFadeOut (double length);
     /** Returns the fade out duration in seconds. */
-    double getFadeOut() const;
+    TimeDuration getFadeOut() const;
 
     /** Sets the curve shape for the fade in to use. */
     void setFadeInType (AudioFadeCurve::Type);
@@ -237,12 +237,12 @@ public:
     LoopInfo& getLoopInfo()                             { return loopInfo; }
 
     /** Returns the loop range in seconds. */
-    EditTimeRange getLoopRange() const;
+    TimeRange getLoopRange() const;
 
     /** @internal */
     bool canLoop() const override                       { return ! isUsingMelodyne(); }
     /** @internal */
-    bool isLooping() const override                     { return getAutoTempo() ? (loopLengthBeats > 0.0) : (loopLength > 0.0); }
+    bool isLooping() const override                     { return getAutoTempo() ? (loopLengthBeats > BeatDuration()) : (loopLength > TimeDuration()); }
     /** @internal */
     bool beatBasedLooping() const override              { return isLooping() && getAutoTempo(); }
     /** @internal */
@@ -250,17 +250,17 @@ public:
     /** @internal */
     void disableLooping() override;
     /** @internal */
-    double getLoopStartBeats() const override;
+    BeatPosition getLoopStartBeats() const override;
     /** @internal */
-    double getLoopStart() const override;
+    TimePosition getLoopStart() const override;
     /** @internal */
-    double getLoopLengthBeats() const override;
+    BeatDuration getLoopLengthBeats() const override;
     /** @internal */
-    double getLoopLength() const override;
+    TimeDuration getLoopLength() const override;
     /** @internal */
-    void setLoopRange (EditTimeRange) override;
+    void setLoopRange (TimeRange) override;
     /** @internal */
-    void setLoopRangeBeats (juce::Range<double>) override;
+    void setLoopRangeBeats (BeatRange) override;
 
     /** Enables auto-detection of beats.
         If this is true the LoopInfo will be set based on what beats were detected.
@@ -603,8 +603,10 @@ protected:
     juce::CachedValue<bool> autoCrossfade;
     juce::CachedValue<FadeBehaviour> fadeInBehaviour, fadeOutBehaviour;
 
-    juce::CachedValue<double> loopStart, loopLength;
-    juce::CachedValue<double> loopStartBeats, loopLengthBeats;
+    juce::CachedValue<TimePosition> loopStart;
+    juce::CachedValue<TimeDuration> loopLength;
+    juce::CachedValue<BeatPosition> loopStartBeats;
+    juce::CachedValue<BeatDuration> loopLengthBeats;
 
     juce::CachedValue<int> transpose;
     juce::CachedValue<float> pitchChange;

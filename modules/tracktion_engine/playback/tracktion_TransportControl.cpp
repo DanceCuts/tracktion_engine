@@ -1035,10 +1035,20 @@ double TransportControl::getCurrentPosition() const
     return position;
 }
 
+TimePosition TransportControl::getPosition() const
+{
+    return TimePosition::fromSeconds (position);
+}
+
 void TransportControl::setCurrentPosition (double newPos)
 {
     CRASH_TRACER
     position = newPos;
+}
+
+void TransportControl::setCurrentPosition (TimePosition t)
+{
+    setCurrentPosition (t.inSeconds());
 }
 
 void TransportControl::setUserDragging (bool b)

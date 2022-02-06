@@ -37,6 +37,13 @@ using BeatRange = RangeType<BeatPosition>;
 
 
 //==============================================================================
+/** Converts a TimeRange to a range of samples. */
+constexpr juce::Range<int64_t> toSamples (TimeRange, double sampleRate);
+
+/** Creates a TimeRange from a range of samples. */
+TimeRange timeRangeFromSamples (juce::Range<int64_t> sampleRange, double sampleRate);
+
+//==============================================================================
 //==============================================================================
 /**
     Describes a range of two positions with a duration separating them.
@@ -190,6 +197,18 @@ template<> inline BeatPosition fromUnderlyingType<BeatPosition> (double t) { ret
 template<> inline BeatDuration fromUnderlyingType<BeatDuration> (double t) { return BeatDuration::fromBeats (t); }
 inline double toUnderlyingType (BeatPosition t) { return t.inBeats(); }
 inline double toUnderlyingType (BeatDuration t) { return t.inBeats(); }
+
+inline constexpr juce::Range<int64_t> toSamples (TimeRange r, double sampleRate)
+{
+    return { toSamples (r.getStart(), sampleRate),
+             toSamples (r.getEnd(), sampleRate) };
+}
+
+inline TimeRange timeRangeFromSamples (juce::Range<int64_t> r, double sampleRate)
+{
+    return { TimePosition::fromSamples (r.getStart(), sampleRate),
+             TimePosition::fromSamples (r.getEnd(), sampleRate) };
+}
 
 template<typename PositionType>
 inline RangeType<PositionType>::RangeType (Position s, Position e)

@@ -35,7 +35,7 @@ public:
             Edit& edit;
             EditInsertPoint& insertPoint;
             Track::Ptr startTrack;
-            double startTime = 0;
+            TimePosition startTime;
             SelectionManager* selectionManager = nullptr;
             bool silent = false;
             FileDragList::PreferredLayout preferredLayout = FileDragList::horizontal;
@@ -82,15 +82,17 @@ public:
         };
         
         void addClip (int trackOffset, const juce::ValueTree& state);
-        void addSelectedClips (const SelectableList&, EditTimeRange range, AutomationLocked);
-        void addAutomation (const juce::Array<TrackSection>&, EditTimeRange range);
+        void addSelectedClips (const SelectableList&, TimeRange, AutomationLocked);
+        void addAutomation (const juce::Array<TrackSection>&, TimeRange);
 
         struct ClipInfo
         {
             juce::ValueTree state;
             int trackOffset = 0;
             bool hasBeatTimes = false;
-            double startBeats = 0, lengthBeats = 0, offsetBeats = 0;
+            BeatPosition startBeats;
+            BeatDuration lengthBeats;
+            BeatPosition offsetBeats;
         };
 
         std::vector<ClipInfo> clips;
@@ -119,17 +121,18 @@ public:
 
     struct TempoChanges  : public ContentType
     {
-        TempoChanges (const TempoSequence&, EditTimeRange range);
+        TempoChanges (const TempoSequence&, TimeRange);
         ~TempoChanges() override;
 
         using ContentType::pasteIntoEdit;
         bool pasteIntoEdit (const EditPastingOptions&) const override;
 
-        bool pasteTempoSequence (TempoSequence&, EditTimeRange targetRange) const;
+        bool pasteTempoSequence (TempoSequence&, TimeRange targetRange) const;
 
         struct TempoChange
         {
-            double beat, bpm;
+            BeatPosition beat;
+            double bpm;
             float curve;
         };
 
@@ -138,13 +141,13 @@ public:
 
     struct AutomationPoints  : public ContentType
     {
-        AutomationPoints (const AutomationCurve&, EditTimeRange range);
+        AutomationPoints (const AutomationCurve&, TimeRange);
         ~AutomationPoints() override;
 
         using ContentType::pasteIntoEdit;
         bool pasteIntoEdit (const EditPastingOptions&) const override;
 
-        bool pasteAutomationCurve (AutomationCurve&, EditTimeRange targetRange) const;
+        bool pasteAutomationCurve (AutomationCurve&, TimeRange targetRange) const;
 
         std::vector<AutomationCurve::AutomationPoint> points;
         juce::Range<float> valueRange;

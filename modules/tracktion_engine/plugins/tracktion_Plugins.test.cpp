@@ -46,16 +46,16 @@ public:
 
                 for (auto t : { track1, track2 })
                 {
-                    auto clip = t->insertWaveClip ("sin", af.getFile(), {{ 0.0, af.getLength() }}, false);
-                    expectEquals (clip->getPosition().getStart(), 0.0);
-                    expectEquals (clip->getPosition().getEnd(), 1.0);
+                    auto clip = t->insertWaveClip ("sin", af.getFile(), {{ TimePosition(), TimePosition::fromSeconds (af.getLength()) }}, false);
+                    expectEquals (clip->getPosition().getStart(), TimePosition());
+                    expectEquals (clip->getPosition().getEnd(), TimePosition::fromSeconds (1.0));
                 }
             }
 
             expectPeak (*edit, { 0.0, 1.0 }, { track1, track2 }, 2.0f);
 
             // Set end to 0.5s for volume off
-            track1->getClips()[0]->setPosition ({{ 0.0, 0.5 }});
+            track1->getClips()[0]->setPosition ({{ TimePosition(), TimePosition::fromSeconds (0.5) }});
             expectPeak (*edit, { 0.0, 0.5 }, { track1, track2 }, 2.0f);
             expectPeak (*edit, { 0.5, 1.0 }, { track1, track2 }, 1.0f);
 
@@ -78,9 +78,9 @@ public:
 
                 for (auto t : { track1 })
                 {
-                    auto clip = t->insertWaveClip ("sin", af.getFile(), {{ 0.0, af.getLength() }}, false);
-                    expectEquals (clip->getPosition().getStart(), 0.0);
-                    expectEquals (clip->getPosition().getEnd(), 1.0);
+                    auto clip = t->insertWaveClip ("sin", af.getFile(), {{ TimePosition(), TimePosition::fromSeconds (af.getLength()) }}, false);
+                    expectEquals (clip->getPosition().getStart(), TimePosition());
+                    expectEquals (clip->getPosition().getEnd(), TimePosition::fromSeconds (1.0));
                 }
             }
 

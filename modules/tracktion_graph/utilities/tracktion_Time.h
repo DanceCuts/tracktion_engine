@@ -40,6 +40,9 @@ struct TimePosition
     */
     constexpr TimePosition (std::chrono::duration<double>);
 
+    /** Creates a copy of another TimePosition. */
+    constexpr TimePosition& operator= (const TimePosition&) = default;
+
     /** Create a TimePosition from a number of seconds. */
     template<typename T>
     static constexpr TimePosition fromSeconds (T positionInSeconds);
@@ -49,11 +52,14 @@ struct TimePosition
     static constexpr TimePosition fromSamples (IntType numSamples, double sampleRate);
 
     /** Returns the TimePosition as a number of seconds. */
-    constexpr  double inSeconds() const;
+    constexpr double inSeconds() const;
 
 private:
     double seconds = 0.0;
 };
+
+/** Converts a TimePosition to a TimeDuration. */
+constexpr TimeDuration toDuration (TimePosition);
 
 /** Converts a TimePosition to a number of samples. */
 constexpr int64_t toSamples (TimePosition, double sampleRate);
@@ -77,6 +83,9 @@ struct TimeDuration
     */
     constexpr TimeDuration (std::chrono::duration<double>);
 
+    /** Creates a copy of another TimeDuration. */
+    constexpr TimeDuration& operator= (const TimeDuration&) = default;
+
     /** Create a TimeDuration from a number of seconds. */
     template<typename T>
     static constexpr TimeDuration fromSeconds (T positionInSeconds);
@@ -91,6 +100,9 @@ struct TimeDuration
 private:
     double seconds = 0.0;
 };
+
+/** Converts a TimeDuration to a TimePosition. */
+constexpr TimePosition toPosition (TimeDuration);
 
 /** Converts a TimeDuration to a number of samples. */
 constexpr int64_t toSamples (TimeDuration, double sampleRate);
@@ -180,6 +192,9 @@ struct BeatPosition
     /** Creates a copy of another BeatPosition. */
     constexpr BeatPosition (const BeatPosition&) = default;
 
+    /** Creates a copy of another BeatPosition. */
+    constexpr BeatPosition& operator= (const BeatPosition&) = default;
+
     /** Create a BeatPosition from a number of beats. */
     template<typename T>
     static constexpr BeatPosition fromBeats (T positionInBeats);
@@ -191,6 +206,8 @@ private:
     double numBeats = 0.0;
 };
 
+/** Converts a BeatPosition to a BeatDuration. */
+constexpr BeatDuration toDuration (BeatPosition);
 
 //==============================================================================
 //==============================================================================
@@ -209,6 +226,9 @@ struct BeatDuration
     /** Creates a copy of another BeatDuration. */
     constexpr BeatDuration (const BeatDuration&) = default;
 
+    /** Creates a copy of another BeatDuration. */
+    constexpr BeatDuration& operator= (const BeatDuration&) = default;
+
     /** Create a BeatPosition from a number of beats. */
     template<typename T>
     static constexpr BeatDuration fromBeats (T durationInBeats);
@@ -219,6 +239,9 @@ struct BeatDuration
 private:
     double numBeats = 0.0;
 };
+
+/** Converts a BeatDuration to a BeatPosition. */
+constexpr BeatPosition toPosition (BeatDuration);
 
 
 //==============================================================================
@@ -274,6 +297,7 @@ constexpr bool operator> (const BeatDuration&, const BeatDuration&);
 /** Compares two BeatDurations. */
 constexpr bool operator>= (const BeatDuration&, const BeatDuration&);
 
+
 //==============================================================================
 //        _        _           _  _
 //     __| |  ___ | |_   __ _ (_)| | ___
@@ -309,6 +333,11 @@ inline constexpr double TimePosition::inSeconds() const
     return seconds;
 }
 
+inline constexpr TimeDuration toDuration (TimePosition t)
+{
+    return TimeDuration::fromSeconds (t.inSeconds());
+}
+
 inline constexpr int64_t toSamples (TimePosition p, double sampleRate)
 {
     return static_cast<int64_t> ((p.inSeconds() * sampleRate)
@@ -338,6 +367,11 @@ inline constexpr TimeDuration TimeDuration::fromSamples (IntType samplePosition,
 inline constexpr double TimeDuration::inSeconds() const
 {
     return seconds;
+}
+
+inline constexpr TimePosition toPosition (TimeDuration t)
+{
+    return TimePosition::fromSeconds (t.inSeconds());
 }
 
 inline constexpr int64_t toSamples (TimeDuration p, double sampleRate)
@@ -439,6 +473,15 @@ inline constexpr double BeatDuration::inBeats() const
     return numBeats;
 }
 
+inline constexpr BeatDuration toDuration (BeatPosition t)
+{
+    return BeatDuration::fromBeats (t.inBeats());
+}
+
+constexpr BeatPosition toPosition (BeatDuration t)
+{
+    return BeatPosition::fromBeats (t.inBeats());
+}
 
 //==============================================================================
 inline constexpr BeatDuration operator+ (const BeatDuration& t1, const BeatDuration& t2)
@@ -482,5 +525,9 @@ inline constexpr bool operator<=    (const BeatDuration& t1, const BeatDuration&
 inline constexpr bool operator>     (const BeatDuration& t1, const BeatDuration& t2)    { return t1.inBeats() > t2.inBeats(); }
 inline constexpr bool operator>=    (const BeatDuration& t1, const BeatDuration& t2)    { return t1.inBeats() >= t2.inBeats(); }
 
+inline juce::String& operator<< (juce::String& s, TimeDuration d)  { return s << juce::String (d.inSeconds()); }
+inline juce::String& operator<< (juce::String& s, TimePosition p)  { return s << juce::String (p.inSeconds()); }
+inline juce::String& operator<< (juce::String& s, BeatDuration d)  { return s << juce::String (d.inBeats()); }
+inline juce::String& operator<< (juce::String& s, BeatPosition p)  { return s << juce::String (p.inBeats()); }
 
 } // namespace tracktion_graph

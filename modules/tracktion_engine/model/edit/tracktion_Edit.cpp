@@ -889,7 +889,7 @@ void Edit::removeZeroLengthClips()
 
     for (auto t : getClipTracks (*this))
         for (auto& c : t->getClips())
-            if (c->getPosition().getLength() <= 0.0)
+            if (c->getPosition().getLength().inSeconds() <= 0.0)
                 clipsToRemove.add (c);
 
     for (auto& c : clipsToRemove)
@@ -1188,12 +1188,12 @@ static Track* findTrackForPredicate (const Edit& edit, Predicate&& f)
     return result;
 }
 
-double Edit::getNextTimeOfInterest (double t)
+TimePosition Edit::getNextTimeOfInterest (TimePosition t)
 {
-    if (t < 0)
-        return 0;
+    if (t < TimePosition())
+        return {};
 
-    auto first = getLength();
+    auto first = toPosition (getLength());
 
     for (auto ct : getClipTracks (*this))
     {
@@ -1206,14 +1206,14 @@ double Edit::getNextTimeOfInterest (double t)
     return first;
 }
 
-double Edit::getPreviousTimeOfInterest (double t)
+TimePosition Edit::getPreviousTimeOfInterest (TimePosition t)
 {
-    if (t < 0)
-        return 0;
+    if (t < TimePosition())
+        return {};
 
-    double last = 0.0;
+    TimePosition last;
 
-    for (auto* ct : getClipTracks (*this))
+    for (auto ct : getClipTracks (*this))
     {
         auto d = ct->getPreviousTimeOfInterest (t);
 
@@ -1460,7 +1460,7 @@ void Edit::loadOldTimeSigInfo()
                 oldInfo = sequenceNode;
 
         if (auto tempo = tempoSequence.getTempo (0))
-            tempo->set (0, oldInfo->getDoubleAttribute ("bpm", 120.0), 0, false);
+            tempo->set (BeatPosition(), oldInfo->getDoubleAttribute ("bpm", 120.0), 0, false);
 
         if (auto timeSig = tempoSequence.getTimeSig (0))
         {
@@ -1608,22 +1608,22 @@ void Edit::timerCallback()
 }
 
 //==============================================================================
-double Edit::getLength() const
+TimeDuration Edit::getLength() const
 {
-    if (totalEditLength < 0)
+    if (! totalEditLength)
     {
-        totalEditLength = 0;
+        totalEditLength = TimeDuration();
 
         for (auto t : getClipTracks (*this))
-            totalEditLength = juce::jmax (totalEditLength, t->getLength());
+            totalEditLength = juce::jmax (*totalEditLength, t->getLength());
     }
 
-    return totalEditLength;
+    return *totalEditLength;
 }
 
-double Edit::getFirstClipTime() const
+TimePosition Edit::getFirstClipTime() const
 {
-    auto t = getLength();
+    auto t = TimePosition::fromSeconds (getLength().inSeconds());
     bool gotOne = false;
 
     for (auto track : getClipTracks (*this))
@@ -1631,11 +1631,11 @@ double Edit::getFirstClipTime() const
         if (auto first = track->getClips().getFirst())
         {
             gotOne = true;
-            t = juce::jmin (t, first->getPosition().getStart());
+            t = std::min (t, first->getPosition().getStart());
         }
     }
 
-    return gotOne ? t : 0.0;
+    return gotOne ? t : TimePosition();
 }
 
 juce::Array<Clip*> Edit::findClipsInLinkGroup (juce::String linkGroupID) const
@@ -2276,7 +2276,7 @@ void Edit::updateFrozenTracks()
         if (auto outputDevice = dynamic_cast<WaveOutputDevice*> (dm.getOutputDeviceAt (j)))
         {
             juce::BigInteger frozen;
-            double length = 0;
+            TimeDuration length;
             int i = 0;
 
             for (auto t : getAllTracks (*this))
@@ -2641,7 +2641,7 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingPreset (Engine& engine, juce:
     }
 
     double songTempo = 120.0;
-    double length = 1.0;
+    auto length = TimeDuration::fromSeconds (1.0);
 
     // Get original clip length
     if (auto firstClip = track->getClips().getFirst())
@@ -2676,11 +2676,11 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingPreset (Engine& engine, juce:
     {
         if (auto firstClip = track->getClips().getFirst())
         {
-            length = length * clipTempo / songTempo;
-            firstClip->setStart (0.0, false, true);
+            length = TimeDuration::fromSeconds (length.inSeconds() * clipTempo / songTempo);
+            firstClip->setStart ({}, false, true);
             firstClip->setLength (length, true);
 
-            edit->getTransport().setLoopRange ({ 0.0, length });
+            edit->getTransport().setLoopRange ({ TimePosition(), length });
         }
     }
 
@@ -2859,8 +2859,9 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingFile (Engine& engine, const j
                 if (length < 0.001)
                     length = 2;
 
-                mc->setPosition ({ { 0.0, length }, 0.0 });
-                edit->getTransport().setLoopRange ({ 0.0, length });
+                const TimeRange timeRange (TimePosition(), TimeDuration::fromSeconds (length));
+                mc->setPosition ({ timeRange, TimePosition() });
+                edit->getTransport().setLoopRange (timeRange);
             }
         }
     }
@@ -2917,8 +2918,9 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingFile (Engine& engine, const j
                 }
             }
 
-            wc->setPosition ({ { 0.0, length }, 0.0 });
-            edit->getTransport().setLoopRange ({ 0.0, length });
+            const TimeRange timeRange (TimePosition(), TimeDuration::fromSeconds (length));
+            wc->setPosition ({ timeRange, TimePosition() });
+            edit->getTransport().setLoopRange (timeRange);
         }
     }
 

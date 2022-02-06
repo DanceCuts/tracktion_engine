@@ -110,7 +110,7 @@ Clip::Ptr duplicateClip (const Clip&);
 void visitAllTrackItems (const Edit&, std::function<bool (TrackItem&)>);
 
 /** Returns the time range covered by the given items. */
-EditTimeRange getTimeRangeForSelectedItems (const SelectableList&);
+TimeRange getTimeRangeForSelectedItems (const SelectableList&);
 
 /** An enum to specify if gaps deleted should be closed or not. */
 enum class CloseGap
@@ -120,17 +120,17 @@ enum class CloseGap
 };
 
 /** Deletes a time range of an Edit, optionally closing the gap. */
-void deleteRegionOfTracks (Edit&, EditTimeRange rangeToDelete, bool onlySelectedTracks, CloseGap, SelectionManager*);
+void deleteRegionOfTracks (Edit&, TimeRange rangeToDelete, bool onlySelectedTracks, CloseGap, SelectionManager*);
 
 /** Deletes a time range of a Clip. */
-void deleteRegionOfClip (Clip&, EditTimeRange rangeToDelete);
+void deleteRegionOfClip (Clip&, TimeRange rangeToDelete);
 
 /** Deletes a time range of a Clip selection, optionally closing the gap. */
-void deleteRegionOfSelectedClips (SelectionManager&, EditTimeRange rangeToDelete,
+void deleteRegionOfSelectedClips (SelectionManager&, TimeRange rangeToDelete,
                                   CloseGap, bool moveAllSubsequentClipsOnTrack);
 
 /** Splits the clips at a given time. */
-SelectableList splitClips (const SelectableList& clips, double time);
+SelectableList splitClips (const SelectableList& clips, TimePosition time);
 
 /** Enum to dictate move clip behaviour. */
 enum class MoveClipAction

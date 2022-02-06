@@ -126,11 +126,11 @@ void GrooveTemplate::clearLatenesses()
     latenesses.clearQuick();
 }
 
-double GrooveTemplate::beatsTimeToGroovyTime (double beatsTime, float strength) const
+BeatPosition GrooveTemplate::beatsTimeToGroovyTime (BeatPosition beatsTime, float strength) const
 {
     auto activeStrength = parameterized ? strength : 1.0f;
 
-    const double beatNum    = std::floor (beatsTime * notesPerBeat);
+    const double beatNum    = std::floor (beatsTime.inBeats() * notesPerBeat);
     const double offset     = notesPerBeat * (beatsTime - (beatNum / notesPerBeat));
     const int latenessIndex = juce::roundToInt (beatNum) % numNotes;
 
@@ -138,10 +138,10 @@ double GrooveTemplate::beatsTimeToGroovyTime (double beatsTime, float strength) 
     const double t1         = (beatNum + 0.5f * lateness);
     const double t2minust1  = 1.0 + 0.5f * ((latenesses[(latenessIndex + 1) % numNotes] * activeStrength) - lateness);
 
-    return (t1 + offset * t2minust1) / notesPerBeat;
+    return BeatPosition::fromBeats ((t1 + offset * t2minust1) / notesPerBeat);
 }
 
-double GrooveTemplate::editTimeToGroovyTime (double editTime, float strength, Edit& edit) const
+TimePosition GrooveTemplate::editTimeToGroovyTime (TimePosition editTime, float strength, Edit& edit) const
 {
     double beats = edit.tempoSequence.timeToBeats (editTime);
     beats = beatsTimeToGroovyTime (beats, strength);

@@ -161,7 +161,9 @@ public:
     static constexpr double maximumLength = 48.0 * 60.0 * 60.0;
     
     /** Returns the maximum length an Edit can be. */
-    static EditTimeRange getMaximumEditTimeRange()  { return { 0.0, maximumLength }; }
+    static TimeRange getMaximumEditTimeRange()      { return { TimePosition(), TimePosition::fromSeconds (maximumLength) }; }
+
+    static TimePosition getMaximumEditEnd()         { return getMaximumEditTimeRange().getEnd(); }
 
     static const int ticksPerQuarterNote = 960; /**< The number of ticks per quarter note. */
 
@@ -509,20 +511,20 @@ public:
 
     //==============================================================================
     /** Finds the next marker or start/end of a clip after a certain time. */
-    double getNextTimeOfInterest (double afterThisTime);
+    TimePosition getNextTimeOfInterest (TimePosition afterThisTime);
 
     /** Finds the previous marker or start/end of a clip after a certain time. */
-    double getPreviousTimeOfInterest (double beforeThisTime);
+    TimePosition getPreviousTimeOfInterest (TimePosition beforeThisTime);
 
     //==============================================================================
     /** Returns the PluginCache which manages all active Plugin[s] for this Edit. */
     PluginCache& getPluginCache() noexcept;
 
     /** Returns the time of first clip. */
-    double getFirstClipTime() const;
+    TimePosition getFirstClipTime() const;
 
     /** Returns the end time of last clip. */
-    double getLength() const;
+    TimeDuration getLength() const;
 
     //==============================================================================
     /** Returns the master VolumeAndPanPlugin. */
@@ -669,7 +671,7 @@ public:
     /** Invalidates the stored length so the next call to getLength will update form the Edit contents.
         You shouldn't normally need to call this as it will happen automatically as clips are added/removed.
     */
-    void invalidateStoredLength() noexcept              { totalEditLength = -1.0; }
+    void invalidateStoredLength() noexcept              { totalEditLength = {}; }
 
     /** If there's a change to send out to the listeners, do it now rather than
         waiting for the next timer message.
@@ -828,7 +830,7 @@ private:
     juce::Array<ModifierTimer*, juce::CriticalSection> modifierTimers;
     std::unique_ptr<GlobalMacros> globalMacros;
 
-    mutable double totalEditLength = -1.0;
+    mutable std::optional<TimeDuration> totalEditLength;
     std::atomic<bool> isLoadInProgress { true };
     std::atomic<int> performingRenderCount { 0 };
     bool shouldRestartPlayback = false;

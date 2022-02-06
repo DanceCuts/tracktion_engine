@@ -182,7 +182,7 @@ public:
 
         juce::CachedValue<juce::String> chordName;  // Chord name is simplified, use getChordName() to get unsimplified
         juce::CachedValue<juce::String> pitches;    // A comma seperated list of pitches used for custom chords, otherwise empty
-        juce::CachedValue<double> lengthInBeats;
+        juce::CachedValue<BeatDuration> lengthInBeats;
         juce::CachedValue<int> octave, inversion;
 
         void setChordName (juce::String chord);
@@ -262,8 +262,8 @@ public:
 
     void generatePattern();
 
-    Scale getScaleAtBeat (double beat) const;
-    int getNoteAtBeat (double beat) const;
+    Scale getScaleAtBeat (BeatPosition) const;
+    int getNoteAtBeat (BeatPosition) const;
 
     bool getAutoUpdate();
     void setAutoUpdate (bool on);
@@ -280,9 +280,9 @@ private:
     std::unique_ptr<ProgressionList> progressionList;
 
     void valueTreeChanged() override {}
-    void valueTreePropertyChanged (juce::ValueTree& p, const juce::Identifier& c) override;
+    void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override;
 
-    ChordClip* getChordClipAt (double beat) const;
+    ChordClip* getChordClipAt (TimePosition) const;
 
     MidiNote* addNote (MidiList& sequence, int pitch, double startBeat, double lengthInBeats,
                        int velocity, int colourIndex, juce::UndoManager*);

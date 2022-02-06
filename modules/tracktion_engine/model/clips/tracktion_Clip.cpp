@@ -256,66 +256,67 @@ void Clip::sourceMediaChanged()
 //==============================================================================
 void Clip::setPosition (ClipPosition newPosition)
 {
-    newPosition.time.start = juce::jlimit (0.0, Edit::maximumLength, newPosition.time.start);
-    newPosition.time.end   = juce::jlimit (newPosition.time.start, Edit::maximumLength, newPosition.time.end);
-    newPosition.offset = juce::jmax (0.0, newPosition.offset);
+    const auto maxEnd = Edit::getMaximumEditEnd();
+    newPosition.time = { juce::jlimit (TimePosition(), maxEnd, newPosition.time.getStart()),
+                         juce::jlimit (newPosition.time.getStart(), maxEnd, newPosition.time.getEnd()) };
+    newPosition.offset = juce::jmax (TimePosition(), newPosition.offset);
 
-    clipStart = newPosition.time.start;
-    length = newPosition.time.getLength();
-    offset = newPosition.offset;
+    clipStart = newPosition.time.getStart().inSeconds();
+    length = newPosition.time.getLength().inSeconds();
+    offset = newPosition.offset.inSeconds();
 }
 
-void Clip::setStart (double newStart, bool preserveSync, bool keepLength)
+void Clip::setStart (TimePosition newStart, bool preserveSync, bool keepLength)
 {
     auto pos = getPosition();
-    auto delta = juce::jlimit (0.0, Edit::maximumLength, newStart) - pos.time.start;
+    auto delta = juce::jlimit (TimePosition(), Edit::getMaximumEditEnd(), newStart) - pos.time.getStart();
 
-    pos.time.start += delta;
+    pos.time = pos.time.withStart (pos.time.getStart() + delta);
 
     if (keepLength)
-        pos.time.end += delta;
+        pos.time = pos.time.withEnd (pos.time.getEnd() + delta);
 
     if (preserveSync)
-        pos.offset = juce::jmax (0.0, pos.offset + delta);
+        pos.offset = juce::jmax (TimePosition(), pos.offset + delta);
 
     setPosition (pos);
 }
 
-void Clip::setLength (double newLength, bool preserveSync)
+void Clip::setLength (TimeDuration newLength, bool preserveSync)
 {
-    setEnd (getPosition().time.start + newLength, preserveSync);
+    setEnd (getPosition().time.getStart() + newLength, preserveSync);
 }
 
-void Clip::setEnd (double newEnd, bool preserveSync)
+void Clip::setEnd (TimePosition newEnd, bool preserveSync)
 {
     auto pos = getPosition();
-    auto delta = juce::jlimit (pos.time.start, Edit::maximumLength, newEnd) - pos.time.end;
+    auto delta = juce::jlimit (pos.time.getStart(), Edit::getMaximumEditEnd(), newEnd) - pos.time.getEnd();
 
     if (! preserveSync)
-        pos.offset -= delta;
+        pos.offset = pos.offset - delta;
 
-    pos.time.end += delta;
+    pos.time = pos.time.withEnd (pos.time.getEnd() + delta);
     setPosition (pos);
 }
 
-void Clip::setOffset (double newOffset)
+void Clip::setOffset (TimePosition newOffset)
 {
     auto pos = getPosition();
-    pos.offset = juce::jmax (0.0, newOffset);
+    pos.offset = juce::jmax (TimePosition(), newOffset);
     setPosition (pos);
 }
 
-juce::Array<double> Clip::getInterestingTimes()
+juce::Array<TimePosition> Clip::getInterestingTimes()
 {
-    juce::Array<double> times;
+    juce::Array<TimePosition> times;
 
     auto pos = getPosition();
-    times.add (pos.time.start);
+    times.add (pos.time.getStart());
 
     for (double m : getRescaledMarkPoints())
-        times.add (m + pos.time.start);
+        times.add (m + pos.time.getStart());
 
-    times.add (pos.time.end);
+    times.add (pos.time.getEnd());
 
     return times;
 }
@@ -349,16 +350,16 @@ double Clip::getSpottingPoint() const
                          marks.getFirst() - pos.offset);
 }
 
-void Clip::trimAwayOverlap (EditTimeRange r)
+void Clip::trimAwayOverlap (TimeRange r)
 {
     auto pos = getPosition();
 
-    if (r.end > pos.time.start)
+    if (r.getEnd() > pos.time.getStart())
     {
-        if (r.end < pos.time.end)
-            setStart (r.end, true, false);
-        else if (pos.time.start < r.start)
-            setEnd (r.start, true);
+        if (r.getEnd() < pos.time.getEnd())
+            setStart (r.getEnd(), true, false);
+        else if (pos.time.getStart() < r.getStart())
+            setEnd (r.getStart(), true);
     }
 }
 

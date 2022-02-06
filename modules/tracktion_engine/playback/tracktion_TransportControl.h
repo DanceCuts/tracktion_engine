@@ -141,9 +141,11 @@ public:
         @see EditPlaybackContext::getAudibleTimelineTime, EditPlaybackContext::getLatencySamples
     */
     double getCurrentPosition() const;
-    
+    TimePosition getPosition() const;
+
     /** Sets a new transport position. */
     void setCurrentPosition (double time);
+    void setCurrentPosition (TimePosition);
 
     /** Signifies a scrub-drag operation has started/stopped.
         While dragging, a short section of the play position is looped repeatedly.
@@ -175,6 +177,7 @@ public:
 
     /** Sets the loop points from a given range. */
     void setLoopRange (EditTimeRange range);
+    void setLoopRange (TimeRange r) { setLoopRange (toEditTimeRange (r)); }
 
     /** Returns the loop range. The loop range is between the two loop points. */
     EditTimeRange getLoopRange() const noexcept;

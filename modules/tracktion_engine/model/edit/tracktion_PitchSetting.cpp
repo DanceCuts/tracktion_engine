@@ -58,7 +58,7 @@ ClipPosition PitchSetting::getPosition() const
     return { { s, s + 1.0 }, 0 };
 }
 
-void PitchSetting::setStartBeat (double beat)
+void PitchSetting::setStartBeat (BeatPosition beat)
 {
     startBeat = beat;
     edit.pitchSequence.sortEvents();

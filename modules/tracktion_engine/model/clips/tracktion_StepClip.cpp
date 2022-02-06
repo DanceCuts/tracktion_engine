@@ -302,13 +302,12 @@ int StepClip::getBeatsPerBar()
 
 void StepClip::generateMidiSequenceForChannels (juce::MidiMessageSequence& result,
                                                 bool convertToSeconds, const Pattern& pattern,
-                                                double startBeat, double clipStartBeat,
-                                                double clipEndBeat, const TempoSequence& tempoSequence)
+                                                BeatPosition startBeat, BeatPosition clipStartBeat,
+                                                BeatPosition clipEndBeat, const TempoSequence& tempoSequence)
 {
     CRASH_TRACER
 
     auto pos = getPosition();
-    auto clipStartTime = convertToSeconds ? pos.getStart() : clipStartBeat;
     auto ratio = 1.0 / speedRatio;
 
     auto& gtm = edit.engine.getGrooveTemplateManager();
@@ -361,8 +360,8 @@ void StepClip::generateMidiSequenceForChannels (juce::MidiMessageSequence& resul
 
                         if (convertToSeconds)
                         {
-                            start = tempoSequence.beatsToTime (start) - clipStartTime;
-                            end = tempoSequence.beatsToTime (end) - clipStartTime;
+                            start = tempoSequence.beatsToTime (start) - pos.getStart();
+                            end = tempoSequence.beatsToTime (end) - pos.getStart();
 
                             if (auto gt = gtm.getTemplateByName (c.grooveTemplate))
                             {
