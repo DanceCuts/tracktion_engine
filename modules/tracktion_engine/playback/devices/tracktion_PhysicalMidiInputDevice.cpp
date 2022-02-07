@@ -271,7 +271,7 @@ struct PhysicalMidiInputDeviceInstance  : public MidiInputDeviceInstanceBase
         return timecodeReader->processMessage (message);
     }
 
-    juce::String prepareToRecord (double start, double punchIn, double sampleRate,
+    juce::String prepareToRecord (TimePosition start, TimePosition punchIn, double sampleRate,
                                   int blockSizeSamples, bool isLivePunch) override
     {
         MidiInputDeviceInstanceBase::prepareToRecord (start, punchIn, sampleRate, blockSizeSamples, isLivePunch);

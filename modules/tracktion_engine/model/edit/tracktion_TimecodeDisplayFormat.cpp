@@ -243,42 +243,42 @@ int TimecodeSnapType::getOneBarLevel() const noexcept
     return type == TimecodeType::barsBeats ? 10 : (type == TimecodeType::millisecs ? 4 : 2);
 }
 
-double TimecodeSnapType::roundTimeDown (double t, const TempoSequence& sequence) const
+TimePosition TimecodeSnapType::roundTimeDown (TimePosition t, const TempoSequence& sequence) const
 {
     return roundTime (t, sequence, 0.0);
 }
 
-double TimecodeSnapType::roundTimeDown (double t, const TempoSequence& sequence, bool isTripletsOverride) const
+TimePosition TimecodeSnapType::roundTimeDown (TimePosition t, const TempoSequence& sequence, bool isTripletsOverride) const
 {
     return roundTime (t, sequence, 0.0, isTripletsOverride);
 }
 
-double TimecodeSnapType::roundTimeNearest (double t, const TempoSequence& sequence) const
+TimePosition TimecodeSnapType::roundTimeNearest (TimePosition t, const TempoSequence& sequence) const
 {
     return roundTime (t, sequence, 0.5 - 1.0e-10);
 }
 
-double TimecodeSnapType::roundTimeNearest (double t, const TempoSequence& sequence, bool isTripletsOverride) const
+TimePosition TimecodeSnapType::roundTimeNearest (TimePosition t, const TempoSequence& sequence, bool isTripletsOverride) const
 {
     return roundTime (t, sequence, 0.5 - 1.0e-10, isTripletsOverride);
 }
 
-double TimecodeSnapType::roundTimeUp (double t, const TempoSequence& sequence) const
+TimePosition TimecodeSnapType::roundTimeUp (TimePosition t, const TempoSequence& sequence) const
 {
     return roundTime (t, sequence, 1.0 - 1.0e-10);
 }
 
-double TimecodeSnapType::roundTimeUp (double t, const TempoSequence& sequence, bool isTripletsOverride) const
+TimePosition TimecodeSnapType::roundTimeUp (TimePosition t, const TempoSequence& sequence, bool isTripletsOverride) const
 {
     return roundTime (t, sequence, 1.0 - 1.0e-10, isTripletsOverride);
 }
 
-double TimecodeSnapType::roundTime (double t, const TempoSequence& sequence, double adjustment) const
+TimePosition TimecodeSnapType::roundTime (TimePosition t, const TempoSequence& sequence, double adjustment) const
 {
     return roundTime (t, sequence, adjustment, sequence.isTripletsAtTime (t));
 }
 
-double TimecodeSnapType::roundTime (double t, const TempoSequence& sequence, double adjustment, bool tripletsOverride) const
+TimePosition TimecodeSnapType::roundTime (TimePosition t, const TempoSequence& sequence, double adjustment, bool tripletsOverride) const
 {
     if (type == TimecodeType::barsBeats)
     {
@@ -312,12 +312,12 @@ double TimecodeSnapType::roundTime (double t, const TempoSequence& sequence, dou
     return q * std::floor ((t / q) + adjustment);
 }
 
-TimecodeSnapType TimecodeSnapType::getSnapTypeForMaximumSnapLevelOf (double t, const TempoSequence& sequence) const
+TimecodeSnapType TimecodeSnapType::getSnapTypeForMaximumSnapLevelOf (TimePosition t, const TempoSequence& sequence) const
 {
     return getSnapTypeForMaximumSnapLevelOf (t, sequence, sequence.isTripletsAtTime (t));
 }
 
-TimecodeSnapType TimecodeSnapType::getSnapTypeForMaximumSnapLevelOf (double t, const TempoSequence& sequence, bool isTripletsOverride) const
+TimecodeSnapType TimecodeSnapType::getSnapTypeForMaximumSnapLevelOf (TimePosition t, const TempoSequence& sequence, bool isTripletsOverride) const
 {
     const TimecodeDisplayFormat format (type);
     auto numTypes = format.getNumSnapTypes();

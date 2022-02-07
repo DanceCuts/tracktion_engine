@@ -24,7 +24,7 @@ public:
     virtual MidiOutputDeviceInstance* createInstance (EditPlaybackContext&);
 
     //==============================================================================
-    juce::String prepareToPlay (Edit*, double start);
+    juce::String prepareToPlay (Edit*, TimePosition);
     bool start();
     void stop();
 
@@ -52,7 +52,7 @@ public:
     void fireMessage (const juce::MidiMessage&);
     void sendNoteOffMessages();
 
-    double getDeviceDelay() const noexcept;
+    TimeDuration getDeviceDelay() const noexcept;
 
     int getPreDelayMs() const noexcept                  { return preDelayMillisecs; }
     void setPreDelayMs (int);

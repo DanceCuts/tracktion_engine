@@ -630,7 +630,7 @@ public:
     virtual void handleMMCMessage (const juce::MidiMessage&) {}
     virtual bool handleTimecodeMessage (const juce::MidiMessage&) { return false; }
 
-    juce::String prepareToRecord (double, double punchIn, double, int, bool) override
+    juce::String prepareToRecord (TimePosition, TimePosition punchIn, double, int, bool) override
     {
         startTime = punchIn;
         recorded.clear();
@@ -650,7 +650,7 @@ public:
         recording = false;
     }
 
-    double getPunchInTime() override
+    TimePosition getPunchInTime() override
     {
         return startTime;
     }

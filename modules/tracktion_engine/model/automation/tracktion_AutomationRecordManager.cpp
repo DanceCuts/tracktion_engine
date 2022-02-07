@@ -63,14 +63,14 @@ void AutomationRecordManager::setWritingAutomation (bool b)
     }
 }
 
-double AutomationRecordManager::getGlideSeconds (Engine& e) 
+TimeDuration AutomationRecordManager::getGlideSeconds (Engine& e)
 {
-    return e.getPropertyStorage().getProperty (SettingID::glideLength);;
+    return TimeDuration::fromSeconds (static_cast<double> (e.getPropertyStorage().getProperty (SettingID::glideLength)));
 }
 
-void AutomationRecordManager::setGlideSeconds (Engine& e, double secs)
+void AutomationRecordManager::setGlideSeconds (Engine& e, TimeDuration secs)
 {
-    e.getPropertyStorage().setProperty (SettingID::glideLength, secs);
+    e.getPropertyStorage().setProperty (SettingID::glideLength, secs.inSeconds());
 }
 
 void AutomationRecordManager::changeListenerCallback (ChangeBroadcaster* source)
@@ -143,7 +143,7 @@ void AutomationRecordManager::punchOut (bool toEnd)
     }
 }
 
-void AutomationRecordManager::applyChangesToParameter (AutomationParamData* parameter, double end, bool toEnd)
+void AutomationRecordManager::applyChangesToParameter (AutomationParamData* parameter, TimePosition end, bool toEnd)
 {
     CRASH_TRACER
     juce::OwnedArray<AutomationCurve> newCurves;
@@ -216,7 +216,7 @@ void AutomationRecordManager::applyChangesToParameter (AutomationParamData* para
                 parameter->parameter.setParameter (parameter->originalValue, juce::sendNotification);
 
             auto& c = parameter->parameter.getCurve();
-            EditTimeRange curveRange (juce::Range<double> (startTime, endTime + glideLength));
+            TimeRange curveRange (startTime, endTime + glideLength);
             c.mergeOtherCurve (curve, curveRange,
                                startTime, glideLength, false, toEnd);
 
@@ -245,7 +245,7 @@ void AutomationRecordManager::postFirstAutomationChange (AutomatableParameter& p
     recordedParams.add (entry.release());
 }
 
-void AutomationRecordManager::postAutomationChange (AutomatableParameter& param, double time, float value)
+void AutomationRecordManager::postAutomationChange (AutomatableParameter& param, TimePosition time, float value)
 {
     TRACKTION_ASSERT_MESSAGE_THREAD
     const juce::ScopedLock sl (lock);

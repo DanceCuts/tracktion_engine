@@ -81,7 +81,7 @@ public:
     // should be called to change a parameter when a user is actively moving it
     void setParameter (float value, juce::NotificationType);
     void setNormalisedParameter (float value, juce::NotificationType);
-    void updateToFollowCurve (double time);
+    void updateToFollowCurve (TimePosition);
 
     /** Call to indicate this parameter is about to be changed. */
     void parameterChangeGestureBegin();
@@ -163,7 +163,7 @@ public:
     void updateStream();
 
     /** Updates the parameter and modifier values from its current automation sources. */
-    void updateFromAutomationSources (double);
+    void updateFromAutomationSources (TimePosition);
 
     //==============================================================================
     virtual bool isParameterActive() const                          { return true; }

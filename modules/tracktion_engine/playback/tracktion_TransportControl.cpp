@@ -45,19 +45,19 @@ namespace IDs
 
 namespace TransportHelpers
 {
-    double snapTime (TransportControl& tc, double t, bool invertSnap)
+    TimePosition snapTime (TransportControl& tc, TimePosition t, bool invertSnap)
     {
         return (tc.snapToTimecode ^ invertSnap) ? tc.getSnapType().roundTimeNearest (t, tc.edit.tempoSequence)
                                                 : t;
     }
 
-    double snapTimeUp (TransportControl& tc, double t, bool invertSnap)
+    TimePosition snapTimeUp (TransportControl& tc, TimePosition t, bool invertSnap)
     {
         return (tc.snapToTimecode ^ invertSnap) ? tc.getSnapType().roundTimeUp (t, tc.edit.tempoSequence)
                                                 : t;
     }
 
-    double snapTimeDown (TransportControl& tc, double t, bool invertSnap)
+    TimePosition snapTimeDown (TransportControl& tc, TimePosition t, bool invertSnap)
     {
         return (tc.snapToTimecode ^ invertSnap) ? tc.getSnapType().roundTimeDown (t, tc.edit.tempoSequence)
                                                 : t;
@@ -437,14 +437,14 @@ private:
                 {
                     firstPress = false;
 
-                    double t = owner.position;
+                    auto t = owner.getPosition();
 
                     if (isRewind)
-                        t = TransportHelpers::snapTimeDown (owner, t - 1.0e-5, false);
+                        t = TransportHelpers::snapTimeDown (owner, t - TimeDuration::inSeconds (1.0e-5), false);
                     else
-                        t = TransportHelpers::snapTimeUp (owner, t + 1.0e-5, false);
+                        t = TransportHelpers::snapTimeUp (owner, t + TimeDuration::inSeconds (1.0e-5), false);
 
-                    owner.setCurrentPosition (t);
+                    owner.setPosition (t);
                 }
 
                 return;
@@ -991,7 +991,7 @@ void TransportControl::timerCallback()
             if (looping)
             {
                 auto lr = getLoopRange();
-                lr.end = std::max (lr.end, lr.start + 0.001);
+                lr = lr.withEnd (std::max (lr.getEnd(), lr.getStart() + TimeDuration::fromSeconds (0.001)));
                 playHeadWrapper->setLoopTimes (true, lr);
             }
             else
@@ -1035,10 +1035,20 @@ double TransportControl::getCurrentPosition() const
     return position;
 }
 
+TimePosition TransportControl::getPosition() const
+{
+    return TimePosition::fromSeconds (position);
+}
+
 void TransportControl::setCurrentPosition (double newPos)
 {
     CRASH_TRACER
     position = newPos;
+}
+
+void TransportControl::setCurrentPosition (TimePosition t)
+{
+    setCurrentPosition (t.inSeconds());
 }
 
 void TransportControl::setUserDragging (bool b)
@@ -1076,39 +1086,39 @@ bool TransportControl::isPositionUpdatingFromPlayhead() const
 }
 
 //==============================================================================
-void TransportControl::setLoopIn (double t)
+void TransportControl::setLoopIn (TimePosition t)
 {
-    setLoopPoint1 (std::max (std::max (loopPoint1.get(), loopPoint2.get()), std::max (0.0, t)));
-    setLoopPoint2 (std::max (0.0, t));
+    setLoopPoint1 (std::max (std::max (loopPoint1.get(), loopPoint2.get()), std::max (TimePosition(), t)));
+    setLoopPoint2 (std::max (TimePosition(), t));
 }
 
-void TransportControl::setLoopOut (double t)
+void TransportControl::setLoopOut (TimePosition t)
 {
-    setLoopPoint1 (std::min (std::min (loopPoint1.get(), loopPoint2.get()), std::max (0.0, t)));
-    setLoopPoint2 (std::max (0.0, t));
+    setLoopPoint1 (std::min (std::min (loopPoint1.get(), loopPoint2.get()), std::max (TimePosition(), t)));
+    setLoopPoint2 (std::max (TimePosition(), t));
 }
 
-void TransportControl::setLoopPoint1 (double t)
+void TransportControl::setLoopPoint1 (TimePosition t)
 {
-    loopPoint1 = juce::jlimit (0.0, edit.getLength() + Edit::maximumLength * 0.75, t);
+    loopPoint1 = juce::jlimit (TimePosition(), TimePosition::fromSeconds (edit.getLength().inSeconds() + Edit::maximumLength * 0.75), t);
 }
 
-void TransportControl::setLoopPoint2 (double t)
+void TransportControl::setLoopPoint2 (TimePosition t)
 {
-    loopPoint2 = juce::jlimit (0.0, edit.getLength() + Edit::maximumLength * 0.75, t);
+    loopPoint2 = juce::jlimit (TimePosition(), TimePosition::fromSeconds (edit.getLength().inSeconds() + Edit::maximumLength * 0.75), t);
 }
 
-void TransportControl::setLoopRange (EditTimeRange times)
+void TransportControl::setLoopRange (TimeRange times)
 {
-    auto maxEndTime = edit.getLength() + Edit::maximumLength * 0.75;
+    auto maxEndTime = TimePosition::fromSeconds (edit.getLength().inSeconds() + Edit::maximumLength * 0.75);
 
-    loopPoint1 = juce::jlimit (0.0, maxEndTime, times.getStart());
-    loopPoint2 = juce::jlimit (0.0, maxEndTime, times.getEnd());
+    loopPoint1 = juce::jlimit (TimePosition(), maxEndTime, times.getStart());
+    loopPoint2 = juce::jlimit (TimePosition(), maxEndTime, times.getEnd());
 }
 
-EditTimeRange TransportControl::getLoopRange() const noexcept
+TimeRange TransportControl::getLoopRange() const noexcept
 {
-    return EditTimeRange::between (loopPoint1, loopPoint2);
+    return TimeRange::between (loopPoint1, loopPoint2);
 }
 
 void TransportControl::setSnapType (TimecodeSnapType newSnapType)

@@ -307,7 +307,7 @@ public:
         return juce::Result::ok();
     }
 
-    juce::String prepareToRecord (double playStart, double punchIn, double sr,
+    juce::String prepareToRecord (TimePosition playStart, TimePosition punchIn, double sr,
                                   int /*blockSizeSamples*/, bool isLivePunch) override
     {
         CRASH_TRACER
@@ -426,7 +426,7 @@ public:
         return true;
     }
 
-    double getPunchInTime() override
+    TimePosition getPunchInTime() override
     {
         const juce::ScopedLock sl (contextLock);
         return recordingContext != nullptr ? recordingContext->punchTimes.getStart()

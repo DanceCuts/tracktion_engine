@@ -152,28 +152,28 @@ double QuantisationType::roundUp (double time, const Edit& edit) const
     return roundTo (time, 1.0 - 1.0e-10, edit);
 }
 
-double QuantisationType::roundToBeat (double beatNumber, double adjustment) const
+BeatPosition QuantisationType::roundToBeat (BeatPosition beatNumber, double adjustment) const
 {
     if (typeIndex == 0)
         return beatNumber;
 
-    const double beats = fractionOfBeat * floor (beatNumber / fractionOfBeat + adjustment);
+    const double beats = fractionOfBeat * floor (beatNumber.inBeats() / fractionOfBeat + adjustment);
 
-    return proportion == 1.0 ? beats
-                             : beatNumber + proportion * (beats - beatNumber);
+    return BeatPosition::fromBeats (proportion == 1.0 ? beats
+                                                      : beatNumber.inBeats() + proportion * (beats - beatNumber.inBeats()));
 }
 
-double QuantisationType::roundBeatToNearest (double beatNumber) const
+BeatPosition QuantisationType::roundBeatToNearest (BeatPosition beatNumber) const
 {
     return roundToBeat (beatNumber, 0.5);
 }
 
-double QuantisationType::roundBeatUp (double beatNumber) const
+BeatPosition QuantisationType::roundBeatUp (BeatPosition beatNumber) const
 {
     return roundToBeat (beatNumber, 1.0 - 1.0e-10);
 }
 
-double QuantisationType::roundBeatToNearestNonZero (double beatNumber) const
+BeatPosition QuantisationType::roundBeatToNearestNonZero (BeatPosition beatNumber) const
 {
     auto t = roundBeatToNearest (beatNumber);
 

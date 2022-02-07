@@ -524,30 +524,30 @@ bool AudioClipBase::setFadeOut (double out)
     return false;
 }
 
-double AudioClipBase::getFadeIn() const
+TimeDuration AudioClipBase::getFadeIn() const
 {
     if (autoCrossfade && getOverlappingClip (ClipDirection::previous) != nullptr)
-        return autoFadeIn;
+        return TimeDuration::fromSeconds (autoFadeIn);
 
     auto len = getPosition().getLength();
 
     if (fadeIn + fadeOut > len)
-        return fadeIn * len / (fadeIn + fadeOut);
+        return TimeDuration::fromSeconds (fadeIn * len / (fadeIn + fadeOut));
 
-    return fadeIn;
+    return TimeDuration::fromSeconds (fadeIn);
 }
 
-double AudioClipBase::getFadeOut() const
+TimeDuration AudioClipBase::getFadeOut() const
 {
     if (autoCrossfade && getOverlappingClip (ClipDirection::next) != nullptr)
-        return autoFadeOut;
+        return TimeDuration::fromSeconds (autoFadeOut);
 
     auto len = getPosition().getLength();
 
     if (fadeIn + fadeOut > len)
-        return fadeOut * len / (fadeIn + fadeOut);
+        return TimeDuration::fromSeconds (fadeOut * len / (fadeIn + fadeOut));
 
-    return fadeOut;
+    return TimeDuration::fromSeconds (fadeOut);
 }
 
 void AudioClipBase::setFadeInType (AudioFadeCurve::Type t)
@@ -907,56 +907,56 @@ void AudioClipBase::disableLooping()
         setLength (getMaximumLength(), true);
 }
 
-EditTimeRange AudioClipBase::getLoopRange() const
+TimeRange AudioClipBase::getLoopRange() const
 {
     if (! beatBasedLooping())
         return { loopStart, loopStart + loopLength };
 
     auto bps = edit.tempoSequence.getBeatsPerSecondAt (getPosition().getStart());
 
-    return { loopStartBeats / bps,
-             (loopStartBeats + loopLengthBeats) / bps };
+    return { TimePosition::fromSeconds (loopStartBeats.inBeats() / bps),
+             TimePosition::fromSeconds ((loopStartBeats + loopLengthBeats).inBeats() / bps) };
 }
 
-double AudioClipBase::getLoopStart() const
+TimePosition AudioClipBase::getLoopStart() const
 {
     if (! beatBasedLooping())
         return loopStart;
 
-    return loopStartBeats / edit.tempoSequence.getBeatsPerSecondAt (getPosition().getStart());
+    return TimePosition::fromSeconds (loopStartBeats.inBeats() / edit.tempoSequence.getBeatsPerSecondAt (getPosition().getStart()));
 }
 
-double AudioClipBase::getLoopLength() const
+TimeDuration AudioClipBase::getLoopLength() const
 {
     if (! beatBasedLooping())
         return loopLength;
 
-    return loopLengthBeats / edit.tempoSequence.getBeatsPerSecondAt (getPosition().getStart());
+    return TimeDuration::fromSeconds (loopLengthBeats / edit.tempoSequence.getBeatsPerSecondAt (getPosition().getStart()));
 }
 
-double AudioClipBase::getLoopStartBeats() const
+BeatPosition AudioClipBase::getLoopStartBeats() const
 {
     if (beatBasedLooping())
         return loopStartBeats;
 
-    return loopStart * edit.tempoSequence.getBeatsPerSecondAt (getPosition().getStart());
+    return BeatPosition::fromBeats (loopStart * edit.tempoSequence.getBeatsPerSecondAt (getPosition().getStart()));
 }
 
-double AudioClipBase::getLoopLengthBeats() const
+BeatDuration AudioClipBase::getLoopLengthBeats() const
 {
     if (beatBasedLooping())
         return loopLengthBeats;
 
-    return loopLength * edit.tempoSequence.getBeatsPerSecondAt (getPosition().getStart());
+    return BeatDuration::fromBeats (loopLength * edit.tempoSequence.getBeatsPerSecondAt (getPosition().getStart()));
 }
 
-void AudioClipBase::setLoopRange (EditTimeRange newRange)
+void AudioClipBase::setLoopRange (TimeRange newRange)
 {
     if (autoTempo)
     {
         auto pos = getPosition();
         auto& ts = edit.tempoSequence;
-        auto newStart = newRange.getStart() * ts.getBeatsPerSecondAt (pos.getStart());
+        auto newStart = BeatPosition::fromBeats (newRange.getStart().inseconds() * ts.getBeatsPerSecondAt (pos.getStart()));
         auto newLength = ts.timeToBeats (pos.getStart() + newRange.getLength()) - ts.timeToBeats (pos.getStart());
         setLoopRangeBeats ({ newStart, newStart + newLength });
     }
@@ -968,8 +968,8 @@ void AudioClipBase::setLoopRange (EditTimeRange newRange)
         // limits the number of times longer than the source file length the loop length can be
         const double maxMultiplesOfSourceLengthForLooping = 50.0;
 
-        auto newStart  = juce::jlimit (0.0, sourceLen / getSpeedRatio(), newRange.getStart());
-        auto newLength = juce::jlimit (0.0, sourceLen * maxMultiplesOfSourceLengthForLooping / getSpeedRatio(), newRange.getLength());
+        auto newStart  = juce::jlimit (TimePosition(), TimePosition::fromSeconds (sourceLen / getSpeedRatio()), newRange.getStart());
+        auto newLength = juce::jlimit (TimeDuration(), TimeDuration::fromSeconds (sourceLen * maxMultiplesOfSourceLengthForLooping / getSpeedRatio()), newRange.getLength());
 
         if (loopStart != newStart || loopLength != newLength)
         {
@@ -979,7 +979,7 @@ void AudioClipBase::setLoopRange (EditTimeRange newRange)
     }
 }
 
-void AudioClipBase::setLoopRangeBeats (juce::Range<double> newRangeBeats)
+void AudioClipBase::setLoopRangeBeats (BeatRange newRangeBeats)
 {
     auto newStartBeat  = juce::jlimit (0.0, double (loopInfo.getNumBeats()), newRangeBeats.getStart());
     auto newLengthBeat = juce::jlimit (0.0, double (loopInfo.getNumBeats() * 2), newRangeBeats.getLength());
@@ -1323,7 +1323,7 @@ double AudioClipBase::clipTimeToSourceFileTime (double t)
     return (t + getPosition().getOffset()) * getSpeedRatio();
 }
 
-void AudioClipBase::addMark (double relCursorPos)
+void AudioClipBase::addMark (TimePosition relCursorPos)
 {
     if (auto sourceItem = sourceFileReference.getSourceProjectItem())
     {
@@ -1333,22 +1333,22 @@ void AudioClipBase::addMark (double relCursorPos)
     }
 }
 
-void AudioClipBase::moveMarkTo (double relCursorPos)
+void AudioClipBase::moveMarkTo (TimePosition relCursorPos)
 {
     if (auto sourceItem = sourceFileReference.getSourceProjectItem())
     {
         auto marks = sourceItem->getMarkedPoints();
 
-        juce::Array<double> rescaled;
+        juce::Array<TimePosition> rescaled;
         juce::Array<int> index;
         getRescaledMarkPoints (rescaled, index);
 
         int indexOfNearest = -1;
-        double nearestDiff = Edit::maximumLength;
+        auto nearestDiff = Edit::getMaximumEditEnd();
 
         for (int i = rescaled.size(); --i >= 0;)
         {
-            auto diff = std::abs (rescaled[i] - relCursorPos);
+            auto diff = std::abs (rescaled[i] - toDuration (relCursorPos));
 
             if (diff < nearestDiff)
             {
@@ -1365,22 +1365,22 @@ void AudioClipBase::moveMarkTo (double relCursorPos)
     }
 }
 
-void AudioClipBase::deleteMark (double relCursorPos)
+void AudioClipBase::deleteMark (TimePosition relCursorPos)
 {
     if (auto sourceItem = sourceFileReference.getSourceProjectItem())
     {
         auto marks = sourceItem->getMarkedPoints();
 
-        juce::Array<double> rescaled;
+        juce::Array<TimePosition> rescaled;
         juce::Array<int> index;
         getRescaledMarkPoints (rescaled, index);
 
         int indexOfNearest = -1;
-        double nearestDiff = Edit::maximumLength;
+        auto nearestDiff = Edit::getMaximumEditEnd();
 
         for (int i = rescaled.size(); --i >= 0;)
         {
-            auto diff = std::abs (rescaled[i] - relCursorPos);
+            auto diff = std::abs (rescaled[i] - toDuration (relCursorPos));
 
             if (diff < nearestDiff)
             {
@@ -1409,7 +1409,7 @@ void AudioClipBase::snapToOriginalBWavTime()
 
     if (bwavTime.isNotEmpty())
     {
-        auto t = bwavTime.getLargeIntValue() / f.getSampleRate();
+        auto t = TimePosition::fromSeconds (bwavTime.getLargeIntValue() / f.getSampleRate());
 
         setStart (t + getPosition().getOffset(), false, true);
     }

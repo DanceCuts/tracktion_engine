@@ -38,21 +38,21 @@ struct TimecodeSnapType
 
     //==============================================================================
     juce::String getDescription (const TempoSetting&, bool isTripletOverride) const;
-    double getApproxIntervalTime (const TempoSetting&) const; // may not be accurate for stuff like ramped tempos
+    TimeDuration getApproxIntervalTime (const TempoSetting&) const; // may not be accurate for stuff like ramped tempos
 
     /** Similar to above expect that the isTripletsOverride argument is used instead of the tempo owner sequence. */
-    double getApproxIntervalTime (const TempoSetting&, bool isTripletsOverride) const; // may not be accurate for stuff like ramped tempos
+    TimeDuration getApproxIntervalTime (const TempoSetting&, bool isTripletsOverride) const; // may not be accurate for stuff like ramped tempos
 
     juce::String getTimecodeString (double time,
                                     const TempoSequence&,
                                     bool useStartLabelIfZero) const;
 
-    double roundTimeDown (double t, const TempoSequence&) const;
-    double roundTimeDown (double t, const TempoSequence&, bool isTripletsOverride) const;
-    double roundTimeNearest (double t, const TempoSequence&) const;
-    double roundTimeNearest (double t, const TempoSequence&, bool isTripletsOverride) const;
-    double roundTimeUp (double t, const TempoSequence&) const;
-    double roundTimeUp (double t, const TempoSequence&, bool tripletsOverride) const;
+    TimePosition roundTimeDown (TimePosition, const TempoSequence&) const;
+    TimePosition roundTimeDown (TimePosition, const TempoSequence&, bool isTripletsOverride) const;
+    TimePosition roundTimeNearest (TimePosition, const TempoSequence&) const;
+    TimePosition roundTimeNearest (TimePosition, const TempoSequence&, bool isTripletsOverride) const;
+    TimePosition roundTimeUp (TimePosition, const TempoSequence&) const;
+    TimePosition roundTimeUp (TimePosition, const TempoSequence&, bool tripletsOverride) const;
 
     //==============================================================================
     int getLevel() const noexcept                   { return level; }
@@ -69,9 +69,9 @@ struct TimecodeSnapType
     int level = 0;
 
 private:
-    double getIntervalNonBarsBeats() const;
-    double roundTime (double t, const TempoSequence&, double adjustment) const;
-    double roundTime (double t, const TempoSequence&, double adjustment, bool isTripletsOverride) const;
+    TimeDuration getIntervalNonBarsBeats() const;
+    TimePosition roundTime (TimePosition, const TempoSequence&, double adjustment) const;
+    TimePosition roundTime (TimePosition, const TempoSequence&, double adjustment, bool isTripletsOverride) const;
 };
 
 /** Stores a duration in both beats and seconds */

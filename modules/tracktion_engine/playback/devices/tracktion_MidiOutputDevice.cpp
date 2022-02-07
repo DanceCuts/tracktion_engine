@@ -317,7 +317,7 @@ void MidiOutputDevice::setEnabled (bool b)
     }
 }
 
-juce::String MidiOutputDevice::prepareToPlay (Edit* edit, double)
+juce::String MidiOutputDevice::prepareToPlay (Edit* edit, TimePosition)
 {
     if (outputDevice == nullptr)
         return TRANS("Couldn't open the MIDI port");
@@ -540,9 +540,9 @@ void MidiOutputDevice::fireMessage (const juce::MidiMessage& message)
     }
 }
 
-double MidiOutputDevice::getDeviceDelay() const noexcept
+TimeDuration MidiOutputDevice::getDeviceDelay() const noexcept
 {
-    return (preDelayMillisecs + audioAdjustmentDelay) * 0.001;
+    return TimeDuration::fromSeconds ((preDelayMillisecs + audioAdjustmentDelay) * 0.001);
 }
 
 void MidiOutputDevice::setPreDelayMs (int ms)

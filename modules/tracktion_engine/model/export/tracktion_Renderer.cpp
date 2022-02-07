@@ -82,9 +82,9 @@ static void addAcidInfo (Edit& edit, Renderer::Parameters& r)
 {
     if (r.destFile.hasFileExtension (".wav") && r.endAllowance == 0.0)
     {
-        auto& pitch = edit.pitchSequence.getPitchAt (r.time.start);
-        auto& tempo = edit.tempoSequence.getTempoAt (r.time.start);
-        auto& timeSig = edit.tempoSequence.getTimeSigAt (r.time.start);
+        auto& pitch = edit.pitchSequence.getPitchAt (r.time.getStart());
+        auto& tempo = edit.tempoSequence.getTempoAt (r.time.getStart());
+        auto& timeSig = edit.tempoSequence.getTimeSigAt (r.time.getStart());
 
         r.metadata.set (juce::WavAudioFormat::acidOneShot, "0");
         r.metadata.set (juce::WavAudioFormat::acidRootSet, "1");

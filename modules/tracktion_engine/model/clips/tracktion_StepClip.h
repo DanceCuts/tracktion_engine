@@ -239,15 +239,7 @@ public:
     juce::Colour getDefaultColour() const override;
 
     bool isMidi() const override                        { return false; }
-    bool canLoop() const override                       { return false; }
-    bool isLooping() const override                     { return false; }
     bool beatBasedLooping() const override              { return true; }
-    void setNumberOfLoops (int) override                {}
-    void disableLooping() override                      {}
-    double getLoopStartBeats() const override           { return 0.0; }
-    double getLoopStart() const override                { return 0.0; }
-    double getLoopLengthBeats() const override          { return 0.0; }
-    double getLoopLength() const override               { return 0.0; }
     bool isMuted() const override                       { return level->mute; }
     void setMuted (bool m) override                     { level->mute = m; }
 
@@ -257,8 +249,8 @@ public:
 
 private:
     void generateMidiSequenceForChannels (juce::MidiMessageSequence&, bool convertToSeconds,
-                                          const Pattern&, double startBeat,
-                                          double clipStartBeat, double clipEndBeat, const TempoSequence&);
+                                          const Pattern&, BeatPosition startBeat,
+                                          BeatPosition clipStartBeat, BeatPosition clipEndBeat, const TempoSequence&);
 
     //==============================================================================
     struct ChannelList;

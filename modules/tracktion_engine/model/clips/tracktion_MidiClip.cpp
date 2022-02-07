@@ -98,9 +98,9 @@ MidiClip::MidiClip (const juce::ValueTree& v, EditItemID id, ClipTrack& targetTr
     mpeMode.referTo (state, IDs::mpeMode, um, false);
     grooveStrength.referTo (state, IDs::grooveStrength, um, 0.1f);
 
-    loopStartBeats.referTo (state, IDs::loopStartBeats, um, 0.0);
-    loopLengthBeats.referTo (state, IDs::loopLengthBeats, um, 0.0);
-    originalLength.referTo (state, IDs::originalLength, um, 0.0);
+    loopStartBeats.referTo (state, IDs::loopStartBeats, um, BeatPosition());
+    loopLengthBeats.referTo (state, IDs::loopLengthBeats, um, BeatDuration());
+    originalLength.referTo (state, IDs::originalLength, um, BeatDuration());
 
     currentTake.referTo (state, IDs::currentTake, um);
 
@@ -297,7 +297,7 @@ MidiClip::ScopedEventsList::~ScopedEventsList()
 }
 
 //==============================================================================
-void MidiClip::extendStart (double newStartTime)
+void MidiClip::extendStart (TimePosition newStartTime)
 {
     auto offsetNeededInBeats = edit.tempoSequence.timeToBeats (getPosition().getStart())
                                  - edit.tempoSequence.timeToBeats (newStartTime);
@@ -694,7 +694,7 @@ void MidiClip::disableLooping()
     }
 }
 
-void MidiClip::setLoopRangeBeats (juce::Range<double> newRangeBeats)
+void MidiClip::setLoopRangeBeats (BeatRange newRangeBeats)
 {
     jassert (newRangeBeats.getStart() >= 0);
 
@@ -713,7 +713,7 @@ void MidiClip::setLoopRangeBeats (juce::Range<double> newRangeBeats)
     }
 }
 
-void MidiClip::setLoopRange (EditTimeRange newRange)
+void MidiClip::setLoopRange (TimeRange newRange)
 {
     jassert (newRange.getStart() >= 0.0);
 
@@ -725,12 +725,12 @@ void MidiClip::setLoopRange (EditTimeRange newRange)
     setLoopRangeBeats ({ newStartBeat, newStartBeat + newLengthBeats });
 }
 
-double MidiClip::getLoopStart() const
+TimePosition MidiClip::getLoopStart() const
 {
     return loopStartBeats / edit.tempoSequence.getBeatsPerSecondAt (getPosition().getStart());
 }
 
-double MidiClip::getLoopLength() const
+TimeDuration MidiClip::getLoopLength() const
 {
     return loopLengthBeats / edit.tempoSequence.getBeatsPerSecondAt (getPosition().getStart());
 }
