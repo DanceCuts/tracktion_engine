@@ -35,7 +35,7 @@
 #define TRACKTION_ENGINE_H_INCLUDED
 
 #if ! JUCE_MODAL_LOOPS_PERMITTED
- #error "You must define JUCE_MODAL_LOOPS_PERMITTED=1 to use Tracktion Engine"
+// #error "You must define JUCE_MODAL_LOOPS_PERMITTED=1 to use Tracktion Engine"
 #endif
 
 #if ! JUCE_PROJUCER_LIVE_BUILD
