@@ -165,8 +165,7 @@ juce::StringArray CrashStackTracer::getCrashedPlugins()
 
 void CrashStackTracer::dump()
 {
-    TRACKTION_LOG ("Crashed");
-    TRACKTION_LOG (juce::newLine);
+    TRACKTION_LOG ("\n\n==========================\nSTACK BACKTRACE:\n==========================\n");
     crashStack.dump();
 }
 
