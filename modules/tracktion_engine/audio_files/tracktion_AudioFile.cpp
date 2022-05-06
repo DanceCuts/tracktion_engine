@@ -796,6 +796,9 @@ void AudioFileManager::handleAsyncUpdate()
 
     {
         const juce::ScopedLock sl (knownFilesLock);
+        if (filesToCheck.size() == 0)
+            return;
+
         fileToCheck = filesToCheck.getUnchecked (filesToCheck.size() - 1);
         filesToCheck.removeLast();
 
