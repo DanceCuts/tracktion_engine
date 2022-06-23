@@ -93,7 +93,7 @@ juce::File WaveAudioClip::getOriginalFile() const
 bool WaveAudioClip::needsRender() const
 {
     return ! isUsingMelodyne()
-        && (isReversed || warpTime || (clipEffects != nullptr && canHaveEffects()))
+        && (isReversed || (warpTime && speedRatio != 1.0) || (clipEffects != nullptr && canHaveEffects()))
         && AudioFile (edit.engine, getOriginalFile()).isValid();
 }
 
