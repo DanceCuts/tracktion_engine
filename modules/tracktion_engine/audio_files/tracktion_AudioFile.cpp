@@ -805,6 +805,7 @@ void AudioFileManager::handleAsyncUpdate()
     CRASH_TRACER
     AudioFile fileToCheck (engine);
 
+    if (filesToCheck.size() > 0)
     {
         const juce::ScopedLock sl (knownFilesLock);
         fileToCheck = filesToCheck.getUnchecked (filesToCheck.size() - 1);
