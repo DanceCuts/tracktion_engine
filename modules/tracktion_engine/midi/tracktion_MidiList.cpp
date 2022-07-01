@@ -491,8 +491,13 @@ private:
     void stopNote (MidiNote& note)
     {
         for (int ch = midiChannelBegin; ch < midiChannelEnd; ++ch)
-            if (midiChannels[ch].notes.contains (&note))
-                return midiChannels[ch].notes.removeFirstMatchingValue (&note);
+        {
+            if (midiChannels[ch].notes.contains(&note))
+            {
+                midiChannels[ch].notes.removeFirstMatchingValue(&note);
+                return;
+            }
+        }
 
         jassertfalse;
     }

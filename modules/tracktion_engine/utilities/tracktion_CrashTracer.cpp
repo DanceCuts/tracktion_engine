@@ -165,7 +165,7 @@ juce::StringArray CrashStackTracer::getCrashedPlugins()
 
 void CrashStackTracer::dump()
 {
-    TRACKTION_LOG ("\n\n==========================\nSTACK BACKTRACE:\n==========================\n");
+    TRACKTION_LOG("\n\n==========================\nSTACK BACKTRACE:\n==========================\n");
     crashStack.dump();
 }
 
@@ -176,8 +176,7 @@ void CrashStackTracer::dump (juce::OutputStream& os)
 
 void CrashStackTracer::dump (juce::OutputStream& os, juce::Thread::ThreadID threadID)
 {
-    os.writeText ("Crashed", false, false, nullptr);
-    os.writeText (juce::newLine, false, false, nullptr);
+    os.writeText ("\n\n==========================\nSTACK BACKTRACE:\n==========================\n", false, false, nullptr);
     crashStack.dump (os, threadID);
 }
 

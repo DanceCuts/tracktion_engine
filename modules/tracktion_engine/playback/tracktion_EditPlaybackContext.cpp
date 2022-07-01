@@ -622,7 +622,7 @@ Clip::Array EditPlaybackContext::stopRecording (InputDeviceInstance& in, EditTim
                                               transport.looping, loopRange,
                                               discardRecordings,
                                               findAppropriateSelectionManager (edit));
-    transport.callRecordingFinishedListeners (in, clips, recordedRange);
+    transport.callRecordingFinishedListeners (in, clips);
     
     return clips;
 }
@@ -734,7 +734,8 @@ void EditPlaybackContext::fillNextNodeBlock (float** allChannels, int numChannel
 
     const double editTime = tracktion_graph::sampleToTime (nodePlaybackContext->playHead.getPosition(), nodePlaybackContext->getSampleRate());
     edit.updateModifierTimers (editTime, numSamples);
-    
+    midiDispatcher.masterTimeUpdate (editTime);
+
     nodePlaybackContext->process (allChannels, numChannels, numSamples);
     
     // Dispatch any MIDI messages that have been injected in to the MidiOutputDeviceInstances by the Node
@@ -921,12 +922,11 @@ double EditPlaybackContext::globalStreamTimeToEditTimeUnlooped (double globalStr
     return tracktion_graph::sampleToTime (timelinePosition, sampleRate);
 }
 
-void EditPlaybackContext::resyncToGlobalStreamTime (juce::Range<double> globalStreamTime)
+void EditPlaybackContext::resyncToGlobalStreamTime (juce::Range<double> globalStreamTime, double sampleRate)
 {
     if (! nodePlaybackContext)
         return;
     
-    const double sampleRate = getSampleRate();
     const auto globalSampleRange = tracktion_graph::timeToSample (globalStreamTime, sampleRate);
     nodePlaybackContext->resyncToReferenceSampleRange (globalSampleRange);
 }

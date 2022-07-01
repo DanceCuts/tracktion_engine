@@ -37,41 +37,38 @@ public:
         loopTimeRange = loopTimes;
     }
 
-    bool getCurrentPosition (CurrentPositionInfo& result) override
+    juce::Optional<PositionInfo> getPosition() const override
     {
-        zerostruct (result);
-        result.frameRate = getFrameRate();
+        PositionInfo result {};
+        result.setFrameRate(getFrameRate());
 
         auto& transport = plugin.edit.getTransport();
 
-        result.isPlaying        = isPlaying;
-        result.isLooping        = isLooping;
-        result.isRecording      = transport.isRecording();
-        result.editOriginTime   = transport.getTimeWhenStarted();
+        result.setIsPlaying(isPlaying);
+        result.setIsLooping(isLooping);
+        result.setIsRecording(transport.isRecording());
+        result.setEditOriginTime(transport.getTimeWhenStarted());
 
-        if (result.isLooping)
+        if (result.getIsLooping())
         {
-            loopStart->setTime (loopTimeRange.start);
-            result.ppqLoopStart = loopStart->getPPQTime();
-
-            loopEnd->setTime (loopTimeRange.end);
-            result.ppqLoopEnd   = loopEnd->getPPQTime();
+            loopStart->setTime(loopTimeRange.start);
+            loopEnd->setTime(loopTimeRange.end);
+            result.setLoopPoints(LoopPoints{ loopStart->getPPQTime(), loopEnd->getPPQTime() });
         }
 
-        result.timeInSeconds    = time;
-        result.timeInSamples    = (int64_t) (time * plugin.getAudioPluginInstance()->getSampleRate());
+        result.setTimeInSeconds(time);
+        result.setTimeInSamples((int64_t)(time * plugin.getAudioPluginInstance()->getSampleRate()));
 
-        currentPos->setTime (time);
+        currentPos->setTime(time);
         const auto& tempo = currentPos->getCurrentTempo();
-        result.bpm                  = tempo.bpm;
-        result.timeSigNumerator     = tempo.numerator;
-        result.timeSigDenominator   = tempo.denominator;
+        result.setBpm(tempo.bpm);
+        result.setTimeSignature(TimeSignature{ tempo.numerator, tempo.denominator });
 
-        result.ppqPositionOfLastBarStart = currentPos->getPPQTimeOfBarStart();
-        result.ppqPosition = std::max (result.ppqPositionOfLastBarStart, currentPos->getPPQTime());
+        result.setPpqPositionOfLastBarStart(currentPos->getPPQTimeOfBarStart());
+        result.setPpqPosition(std::max(result.getPpqPositionOfLastBarStart().orFallback(0), currentPos->getPPQTime()));
 
-        return true;
-    }
+        return result;
+    };
 
 private:
     ExternalPlugin& plugin;

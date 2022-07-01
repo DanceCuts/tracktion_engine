@@ -288,46 +288,42 @@ public:
         }
     }
 
-    bool getCurrentPosition (CurrentPositionInfo& result) override
+    juce::Optional<PositionInfo> getPosition() const override
     {
-        zerostruct (result);
-        result.frameRate = getFrameRate();
+        PositionInfo result {};
+        result.setFrameRate(getFrameRate());
 
         if (currentPos == nullptr)
-            return false;
+            return {};
 
         auto& transport = plugin.edit.getTransport();
         double localTime = time;
 
-        result.isPlaying        = isPlaying;
-        result.isRecording      = transport.isRecording();
-        result.editOriginTime   = transport.getTimeWhenStarted();
-        result.isLooping        = transport.looping;
+        result.setIsPlaying(isPlaying);
+        result.setIsRecording(transport.isRecording());
+        result.setEditOriginTime(transport.getTimeWhenStarted());
+        result.setIsLooping(transport.looping);
 
-        if (result.isLooping)
+        if (result.getIsLooping())
         {
             const auto loopTimes = transport.getLoopRange();
-            loopStart->setTime (loopTimes.start);
-            result.ppqLoopStart = loopStart->getPPQTime();
-
-            loopEnd->setTime (loopTimes.end);
-            result.ppqLoopEnd = loopEnd->getPPQTime();
+            loopStart->setTime(loopTimes.start);
+            loopEnd->setTime(loopTimes.end);
+            result.setLoopPoints(LoopPoints{ loopStart->getPPQTime(), loopEnd->getPPQTime() });
         }
 
-        result.timeInSamples    = (int64_t) (localTime * plugin.sampleRate);
-        result.timeInSeconds    = localTime;
+        result.setTimeInSeconds(localTime);
+        result.setTimeInSamples((int64_t)(localTime * plugin.sampleRate));
 
-        currentPos->setTime (localTime);
+        currentPos->setTime(localTime);
         auto& tempo = currentPos->getCurrentTempo();
-        result.bpm                  = tempo.bpm;
-        result.timeSigNumerator     = tempo.numerator;
-        result.timeSigDenominator   = tempo.denominator;
+        result.setBpm(tempo.bpm);
+        result.setTimeSignature(TimeSignature{ tempo.numerator, tempo.denominator });
 
-        result.ppqPositionOfLastBarStart = currentPos->getPPQTimeOfBarStart();
-        result.ppqPosition = std::max (result.ppqPositionOfLastBarStart,
-                                       currentPos->getPPQTime());
+        result.setPpqPositionOfLastBarStart(currentPos->getPPQTimeOfBarStart());
+        result.setPpqPosition(std::max(result.getPpqPositionOfLastBarStart().orFallback(0), currentPos->getPPQTime()));
 
-        return true;
+        return result;
     }
 
 private:
@@ -819,7 +815,7 @@ void ExternalPlugin::doFullInitialisation()
         identiferString = createIdentifierString (desc);
         updateDebugName();
 
-        if (processing && pluginInstance == nullptr && edit.shouldLoadPlugins())
+        if (processing && pluginInstance == nullptr && engine.getEngineBehaviour().shouldLoadPlugin (*this))
         {
             if (isDisabled())
                 return;

@@ -97,6 +97,17 @@ bool AudioFile::isFloatingPoint() const                 { return getInfo().isFlo
 juce::StringPairArray AudioFile::getMetadata() const    { return getInfo().metadata; }
 juce::AudioFormat* AudioFile::getFormat() const         { return getInfo().format; }
 
+bool AudioFile::moveToTrash() const
+{
+    CRASH_TRACER
+
+    auto& afm = engine->getAudioFileManager();
+    afm.checkFileForChangesAsync (*this);
+    afm.releaseFile (*this);
+
+    return file.moveToTrash();
+}
+
 bool AudioFile::deleteFile() const
 {
     CRASH_TRACER
@@ -794,6 +805,7 @@ void AudioFileManager::handleAsyncUpdate()
     CRASH_TRACER
     AudioFile fileToCheck (engine);
 
+    if (filesToCheck.size() > 0)
     {
         const juce::ScopedLock sl (knownFilesLock);
         if (filesToCheck.size() == 0)
