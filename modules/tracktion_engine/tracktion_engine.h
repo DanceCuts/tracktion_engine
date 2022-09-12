@@ -247,7 +247,7 @@
     This is only tempoarary and will be removed in a future release.
  */
 #ifndef TRACKTION_JUCE7
- #define TRACKTION_JUCE7 0
+ #define TRACKTION_JUCE7 1
 #endif
 
 //==============================================================================
