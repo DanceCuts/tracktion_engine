@@ -71,8 +71,8 @@ public:
    #else
     bool getCurrentPosition (CurrentPositionInfo& result) override
     {
-        zerostruct (result);
-        result.frameRate = getFrameRate();
+        PositionInfo result {};
+        result.setFrameRate(getFrameRate());
 
         auto& transport = plugin.edit.getTransport();
 
@@ -81,7 +81,7 @@ public:
         result.isRecording      = transport.isRecording();
         result.editOriginTime   = transport.getTimeWhenStarted().inSeconds();
 
-        if (result.isLooping)
+        if (result.getIsLooping())
         {
             loopStart.set (loopTimeRange.getStart());
             result.ppqLoopStart = loopStart.getPPQTime();

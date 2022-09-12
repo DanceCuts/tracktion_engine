@@ -479,7 +479,7 @@ enum { initialTimerDelay = 10 };
 bool SmartThumbnail::enabled = true;
 
 SmartThumbnail::SmartThumbnail (Engine& e, const AudioFile& f, juce::Component& componentToRepaint, Edit* ed)
-    : TracktionThumbnail (256, e.getAudioFileFormatManager().readFormatManager,
+    : TracktionThumbnail (32, e.getAudioFileFormatManager().readFormatManager,
                           e.getAudioFileManager().getAudioThumbnailCache()),
       file (f), engine (e), edit (ed), component (componentToRepaint)
 {
@@ -805,8 +805,12 @@ void AudioFileManager::handleAsyncUpdate()
     CRASH_TRACER
     AudioFile fileToCheck (engine);
 
+    if (filesToCheck.size() > 0)
     {
         const juce::ScopedLock sl (knownFilesLock);
+        if (filesToCheck.size() == 0)
+            return;
+
         fileToCheck = filesToCheck.getUnchecked (filesToCheck.size() - 1);
         filesToCheck.removeLast();
 

@@ -326,8 +326,8 @@ public:
    #else
     bool getCurrentPosition (CurrentPositionInfo& result) override
     {
-        zerostruct (result);
-        result.frameRate = getFrameRate();
+        PositionInfo result {};
+        result.setFrameRate(getFrameRate());
 
         auto& transport = plugin.edit.getTransport();
         auto localTime = time.load();
@@ -337,7 +337,7 @@ public:
         result.editOriginTime   = transport.getTimeWhenStarted().inSeconds();
         result.isLooping        = transport.looping;
 
-        if (result.isLooping)
+        if (result.getIsLooping())
         {
             const auto loopTimes = transport.getLoopRange();
             loopStart.set (loopTimes.getStart());
@@ -360,7 +360,7 @@ public:
         result.ppqPosition = std::max (result.ppqPositionOfLastBarStart,
                                        currentPos.getPPQTime());
 
-        return true;
+        return result;
     }
    #endif
 
