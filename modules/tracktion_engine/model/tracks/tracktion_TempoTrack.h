@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /**
@@ -40,14 +40,14 @@ public:
     /** @internal */
     int indexOfTrackItem (TrackItem*) const override;
     /** @internal */
-    int getIndexOfNextTrackItemAt (TimePosition) override;
+    int getIndexOfNextTrackItemAt (double time) override;
     /** @internal */
-    TrackItem* getNextTrackItemAt (TimePosition) override;
+    TrackItem* getNextTrackItemAt (double time) override;
     /** @internal */
     bool canContainPlugin (Plugin*) const override;
 
     /** @internal */
-    void insertSpaceIntoTrack (TimePosition, TimeDuration) override;
+    void insertSpaceIntoTrack (double time, double amountOfSpace) override;
 
 private:
     juce::Array<TrackItem*> buildTrackItemList() const;
@@ -55,4 +55,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TempoTrack)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

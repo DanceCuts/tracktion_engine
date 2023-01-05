@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -46,12 +46,12 @@ public:
         timestretched then this will return a proportion of getSourceLength, if it
         is looped this will return infinite.
     */
-    TimeDuration getMaximumLength() override;
+    double getMaximumLength() override;
 
     /** Must return the length in seconds of the source material e.g. the length
         of the audio file or edit.
     */
-    virtual TimeDuration getSourceLength() const = 0;
+    virtual double getSourceLength() const = 0;
 
     /** Returns the file used to play back the source and will get proxied etc. */
     virtual AudioFile getAudioFile() const  { return AudioFile (edit.engine, getCurrentSourceFile()); }
@@ -122,21 +122,21 @@ public:
     /** Sets the gain of the clip in dB. */
     void setGainDB (float dB);
     /** Returns the gain of the clip in dB. */
-    float getGainDB() const noexcept                    { return level->dbGain.get(); }
+    float getGainDB() const noexcept                    { return level->dbGain; }
     /** Returns the gain of the clip. */
-    float getGain() const noexcept                      { return dbToGain (level->dbGain.get()); }
+    float getGain() const noexcept                      { return dbToGain (level->dbGain); }
 
     /** Sets the pan of the clip.
         @param pan -1 = full left, 0 = centre, 1 = full right
     */
     void setPan (float pan);
     /** Returns the pan of the clip from -1 to 1 @see setPan. */
-    float getPan() const noexcept                       { return level->pan.get(); }
+    float getPan() const noexcept                       { return level->pan; }
 
     /** @internal */
     void setMuted (bool shouldBeMuted) override         { level->mute = shouldBeMuted; }
     /** @internal */
-    bool isMuted() const override                       { return level->mute.get(); }
+    bool isMuted() const override                       { return level->mute; }
 
     /** Returns a LiveClipLevel which can be used to read the gain, pan and mute statuses. */
     LiveClipLevel getLiveClipLevel();
@@ -160,17 +160,17 @@ public:
         If the duration is longer than the clip or overlaps the fade out, this will
         reduce the fade out accordingly.
     */
-    bool setFadeIn (TimeDuration length);
+    bool setFadeIn (double length);
     /** Returns the fade in duration in seconds. */
-    TimeDuration getFadeIn() const;
+    double getFadeIn() const;
 
     /** Sets the fade out duration in seconds.
         If the duration is longer than the clip or overlaps the fade in, this will
         reduce the fade in accordingly.
     */
-    bool setFadeOut (TimeDuration length);
+    bool setFadeOut (double length);
     /** Returns the fade out duration in seconds. */
-    TimeDuration getFadeOut() const;
+    double getFadeOut() const;
 
     /** Sets the curve shape for the fade in to use. */
     void setFadeInType (AudioFadeCurve::Type);
@@ -237,12 +237,12 @@ public:
     LoopInfo& getLoopInfo()                             { return loopInfo; }
 
     /** Returns the loop range in seconds. */
-    TimeRange getLoopRange() const;
+    EditTimeRange getLoopRange() const;
 
     /** @internal */
     bool canLoop() const override                       { return ! isUsingMelodyne(); }
     /** @internal */
-    bool isLooping() const override                     { return getAutoTempo() ? (loopLengthBeats > BeatDuration()) : (loopLength > TimeDuration()); }
+    bool isLooping() const override                     { return getAutoTempo() ? (loopLengthBeats > 0.0) : (loopLength > 0.0); }
     /** @internal */
     bool beatBasedLooping() const override              { return isLooping() && getAutoTempo(); }
     /** @internal */
@@ -250,17 +250,17 @@ public:
     /** @internal */
     void disableLooping() override;
     /** @internal */
-    BeatPosition getLoopStartBeats() const override;
+    double getLoopStartBeats() const override;
     /** @internal */
-    TimePosition getLoopStart() const override;
+    double getLoopStart() const override;
     /** @internal */
-    BeatDuration getLoopLengthBeats() const override;
+    double getLoopLengthBeats() const override;
     /** @internal */
-    TimeDuration getLoopLength() const override;
+    double getLoopLength() const override;
     /** @internal */
-    void setLoopRange (TimeRange) override;
+    void setLoopRange (EditTimeRange) override;
     /** @internal */
-    void setLoopRangeBeats (BeatRange) override;
+    void setLoopRangeBeats (juce::Range<double>) override;
 
     /** Enables auto-detection of beats.
         If this is true the LoopInfo will be set based on what beats were detected.
@@ -439,7 +439,7 @@ public:
         ~ProxyRenderingInfo();
 
         std::unique_ptr<AudioSegmentList> audioSegmentList;
-        TimeRange clipTime;
+        EditTimeRange clipTime;
         double speedRatio;
         TimeStretcher::Mode mode;
         TimeStretcher::ElastiqueProOptions options;
@@ -460,7 +460,7 @@ public:
     AudioFile getProxyFileToCreate (bool renderTimestretched);
     
     /** Can be used to disable proxy file generation for this clip.
-        If disabled, the audio engine will time-stretch the file in real time which may use more CPU.
+        N.B. if disabled, this clip won't fully sync to the TempoSequence.
     */
     void setUsesProxy (bool canUseProxy) noexcept;
     
@@ -486,22 +486,6 @@ public:
 
     /** Returns true if this clp should use a time-stretched preview. */
     bool usesTimestretchedPreview() const noexcept                      { return useTimestretchedPreview; }
-
-    /** Returns an AudioSegmentList describing this file if it is using auto-tempo.
-        This can be useful for drawing waveforms.
-        [[ message_thread ]]
-    */
-    const AudioSegmentList& getAudioSegmentList();
-
-    /** Sets the resampling qulity to use.
-        This is only applicable if setUsesProxy has been set to false.
-        If a proxy is used, Lagrange interpolation will be used.
-        N.B. the higher the quality, the more higher the CPU usage during playback.
-    */
-    void setResamplingQuality (ResamplingQuality);
-
-    /** Returns the resampling quality to the be used. */
-    ResamplingQuality getResamplingQuality() const;
 
     //==============================================================================
     /** Reverses the loop points to expose the same section of the source file but reversed. */
@@ -580,15 +564,15 @@ public:
 
     //==============================================================================
     /** @internal */
-    void addMark (TimePosition relCursorPos);
+    void addMark (double relCursorPos);
     /** @internal */
-    void moveMarkTo (TimePosition relCursorPos);
+    void moveMarkTo (double relCursorPos);
     /** @internal */
-    void deleteMark (TimePosition relCursorPos);
+    void deleteMark (double relCursorPos);
     /** @internal */
-    void getRescaledMarkPoints (juce::Array<TimePosition>& rescaled, juce::Array<int>& orig) const;
+    void getRescaledMarkPoints (juce::Array<double>& rescaled, juce::Array<int>& orig) const;
     /** @internal */
-    juce::Array<TimePosition> getRescaledMarkPoints() const override;
+    juce::Array<double> getRescaledMarkPoints() const override;
 
     /** @internal */
     juce::Array<ReferencedItem> getReferencedItems() override;
@@ -613,19 +597,15 @@ protected:
     std::shared_ptr<ClipLevel> level { std::make_shared<ClipLevel>() };
     juce::CachedValue<juce::String> channels;
 
-    juce::CachedValue<TimeDuration> fadeIn, fadeOut;
-    TimeDuration autoFadeIn, autoFadeOut;
+    juce::CachedValue<double> fadeIn, fadeOut;
+    double autoFadeIn = 0, autoFadeOut = 0;
     juce::CachedValue<AudioFadeCurve::Type> fadeInType, fadeOutType;
     juce::CachedValue<bool> autoCrossfade;
     juce::CachedValue<FadeBehaviour> fadeInBehaviour, fadeOutBehaviour;
-    juce::CachedValue<ResamplingQuality> resamplingQuality;
 
-    juce::CachedValue<TimePosition> loopStart;
-    juce::CachedValue<TimeDuration> loopLength;
-    juce::CachedValue<BeatPosition> loopStartBeats;
-    juce::CachedValue<BeatDuration> loopLengthBeats;
+    juce::CachedValue<double> loopStart, loopLength;
+    juce::CachedValue<double> loopStartBeats, loopLengthBeats;
 
-    juce::CachedValue<int> proxyAllowed;
     juce::CachedValue<int> transpose;
     juce::CachedValue<float> pitchChange;
     LoopInfo loopInfo;
@@ -636,14 +616,14 @@ protected:
     juce::CachedValue<AutoPitchMode> autoPitchMode;
 
     mutable WarpTimeManager::Ptr warpTimeManager;
-    mutable std::unique_ptr<AudioSegmentList> audioSegmentList;
+    std::unique_ptr<AudioSegmentList> audioSegmentList;
     std::unique_ptr<ClipEffects> clipEffects;
     AsyncFunctionCaller asyncFunctionCaller;
 
     juce::AudioChannelSet activeChannels;
     void updateLeftRightChannelActivenessFlags();
 
-    bool useTimestretchedPreview = false;
+    bool proxyAllowed = true, useTimestretchedPreview = false;
     PluginList pluginList;
 
     bool lastRenderJobFailed = false;
@@ -687,32 +667,33 @@ private:
     bool shouldAttemptRender() const    { return (! lastRenderJobFailed) && needsRender(); }
 
     void clearCachedAudioSegmentList();
+    const AudioSegmentList* getAudioSegmentList();
 
     //==============================================================================
     void jobFinished (RenderManager::Job& job, bool completedOk) override;
     void timerCallback() override;
 
-    TimePosition clipTimeToSourceFileTime (TimePosition clipTime);
+    double clipTimeToSourceFileTime (double clipTime);
 
     //==============================================================================
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AudioClipBase)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine
 
 namespace juce
 {
     template <>
-    struct VariantConverter<tracktion::engine::AudioClipBase::FadeBehaviour>
+    struct VariantConverter<tracktion_engine::AudioClipBase::FadeBehaviour>
     {
-        static tracktion::engine::AudioClipBase::FadeBehaviour fromVar (const var& v)   { return (tracktion::engine::AudioClipBase::FadeBehaviour) static_cast<int> (v); }
-        static var toVar (tracktion::engine::AudioClipBase::FadeBehaviour v)            { return static_cast<int> (v); }
+        static tracktion_engine::AudioClipBase::FadeBehaviour fromVar (const var& v)   { return (tracktion_engine::AudioClipBase::FadeBehaviour) static_cast<int> (v); }
+        static var toVar (tracktion_engine::AudioClipBase::FadeBehaviour v)            { return static_cast<int> (v); }
     };
 
     template <>
-    struct VariantConverter<tracktion::engine::AudioClipBase::AutoPitchMode>
+    struct VariantConverter<tracktion_engine::AudioClipBase::AutoPitchMode>
     {
-        static tracktion::engine::AudioClipBase::AutoPitchMode fromVar (const var& v)   { return (tracktion::engine::AudioClipBase::AutoPitchMode) static_cast<int> (v); }
-        static var toVar (tracktion::engine::AudioClipBase::AutoPitchMode v)            { return static_cast<int> (v); }
+        static tracktion_engine::AudioClipBase::AutoPitchMode fromVar (const var& v)   { return (tracktion_engine::AudioClipBase::AutoPitchMode) static_cast<int> (v); }
+        static var toVar (tracktion_engine::AudioClipBase::AutoPitchMode v)            { return static_cast<int> (v); }
     };
 }

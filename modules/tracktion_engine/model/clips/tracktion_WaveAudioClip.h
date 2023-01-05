@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -75,7 +75,7 @@ public:
     bool usesSourceFile() override                              { return true; }
 
     /** @internal */
-    TimeDuration getSourceLength() const override;
+    double getSourceLength() const override;
     /** @internal */
     void sourceMediaChanged() override;
 
@@ -112,7 +112,7 @@ public:
 
 private:
     //==============================================================================
-    mutable TimeDuration sourceLength;
+    mutable double sourceLength = 0;
     WaveCompManager::Ptr compManager;
 
     static constexpr int takeIndexNeedsUpdating = -2;
@@ -131,4 +131,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WaveAudioClip)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 struct RackInputAutomatableParameter   : public AutomatableParameter
@@ -310,7 +310,7 @@ void RackInstance::deinitialise()
         type->deregisterInstance (this);
 }
 
-void RackInstance::updateAutomatableParamPosition (TimePosition time)
+void RackInstance::updateAutomatableParamPosition (double time)
 {
     Plugin::updateAutomatableParamPosition (time);
 
@@ -323,7 +323,7 @@ double RackInstance::getLatencySeconds()
     return 0.0;
 }
 
-void RackInstance::prepareForNextBlock (TimePosition)
+void RackInstance::prepareForNextBlock (double)
 {
 }
 
@@ -382,4 +382,4 @@ juce::String RackInstance::getOutputName (Channel c)
     return juce::String (ouput) + ". " + type->getOutputNames()[ouput];
 }
 
-}} // namespace tracktion { inline namespace engine
+}

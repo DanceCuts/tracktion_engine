@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 TrackCompManager::CompSection::CompSection (const juce::ValueTree& v) : state (v)
@@ -85,12 +85,12 @@ void TrackCompManager::TrackComp::setTimeFormat (TimeFormat t)
 }
 
 
-juce::Array<TimeRange> TrackCompManager::TrackComp::getMuteTimes (const juce::Array<TimeRange>& nonMuteTimes)
+juce::Array<EditTimeRange> TrackCompManager::TrackComp::getMuteTimes (const juce::Array<EditTimeRange>& nonMuteTimes)
 {
-    juce::Array<TimeRange> muteTimes;
+    juce::Array<EditTimeRange> muteTimes;
     muteTimes.ensureStorageAllocated (nonMuteTimes.size() + 1);
 
-    auto lastTime = 0_tp;
+    double lastTime = 0.0;
 
     if (! nonMuteTimes.isEmpty())
     {
@@ -103,15 +103,15 @@ juce::Array<TimeRange> TrackCompManager::TrackComp::getMuteTimes (const juce::Ar
         }
     }
 
-    muteTimes.add ({ lastTime, TimePosition::fromSeconds (std::numeric_limits<double>::max()) });
+    muteTimes.add ({ lastTime, std::numeric_limits<double>::max() });
 
     return muteTimes;
 }
 
-juce::Array<TimeRange> TrackCompManager::TrackComp::getNonMuteTimes (Track& t, TimeDuration crossfadeTime) const
+juce::Array<EditTimeRange> TrackCompManager::TrackComp::getNonMuteTimes (Track& t, double crossfadeTime) const
 {
     auto halfCrossfade = crossfadeTime / 2.0;
-    juce::Array<TimeRange> nonMuteTimes;
+    juce::Array<EditTimeRange> nonMuteTimes;
 
     auto& ts = edit.tempoSequence;
     const bool convertFromBeats = timeFormat == beats;
@@ -123,12 +123,11 @@ juce::Array<TimeRange> TrackCompManager::TrackComp::getNonMuteTimes (Track& t, T
 
         if (convertFromBeats)
         {
-            s = ts.toTime (BeatPosition::fromBeats (s)).inSeconds();
-            e = ts.toTime (BeatPosition::fromBeats (e)).inSeconds();
+            s = ts.beatsToTime (s);
+            e = ts.beatsToTime (e);
         }
 
-        nonMuteTimes.add ({ TimePosition::fromSeconds (s) - halfCrossfade,
-                            TimePosition::fromSeconds (e) + halfCrossfade });
+        nonMuteTimes.add ({ s - halfCrossfade, e + halfCrossfade });
     }
 
     // remove any overlaps
@@ -140,23 +139,23 @@ juce::Array<TimeRange> TrackCompManager::TrackComp::getNonMuteTimes (Track& t, T
         if (r1.getEnd() > r2.getStart())
         {
             auto diff = (r1.getEnd() - r2.getStart()) / 2.0;
-            r1 = r1.withEnd (r1.getEnd() - diff);
-            jassert (r1.getEnd() > r1.getStart());
-            r2 = r2.withStart (r2.getStart() + diff);
-            jassert (r2.getEnd() > r2.getStart());
+            r1.end -= diff;
+            jassert (r1.end > r1.start);
+            r2.start += diff;
+            jassert (r2.end > r2.start);
         }
     }
 
     return nonMuteTimes;
 }
 
-TimeRange TrackCompManager::TrackComp::getTimeRange() const
+EditTimeRange TrackCompManager::TrackComp::getTimeRange() const
 {
-    TimeRange time;
+    EditTimeRange time;
 
-    const auto crossfadeTimeMs = edit.engine.getPropertyStorage().getProperty (SettingID::compCrossfadeMs, 20.0);
-    const auto crossfadeTime = TimeDuration::fromSeconds (static_cast<double> (crossfadeTimeMs) / 1000.0);
-    const auto halfCrossfade = crossfadeTime / 2.0;
+    auto crossfadeTimeMs = edit.engine.getPropertyStorage().getProperty (SettingID::compCrossfadeMs, 20.0);
+    auto crossfadeTime = static_cast<double> (crossfadeTimeMs) / 1000.0;
+    auto halfCrossfade = crossfadeTime / 2.0;
 
     auto& ts = edit.tempoSequence;
     bool convertFromBeats = timeFormat == beats;
@@ -171,12 +170,11 @@ TimeRange TrackCompManager::TrackComp::getTimeRange() const
 
         if (convertFromBeats)
         {
-            s = ts.toTime (BeatPosition::fromBeats (s)).inSeconds();
-            e = ts.toTime (BeatPosition::fromBeats (e)).inSeconds();
+            s = ts.beatsToTime (s);
+            e = ts.beatsToTime (e);
         }
 
-        TimeRange secTime (TimePosition::fromSeconds (s) - halfCrossfade,
-                           TimePosition::fromSeconds (e) + halfCrossfade);
+        EditTimeRange secTime (s - halfCrossfade, e + halfCrossfade);
         time = time.isEmpty() ? secTime : time.getUnionWith (secTime);
     }
 
@@ -259,7 +257,7 @@ TrackCompManager::CompSection* TrackCompManager::TrackComp::moveSection (CompSec
     // move section
     auto um = &edit.getUndoManager();
     juce::WeakReference<CompSection> prevCs = objects[sectionIndex - 1];
-    juce::Range<double> oldSectionTimes (prevCs == nullptr ? 0.0 : prevCs->getEnd(), cs->getEnd());
+    EditTimeRange oldSectionTimes (prevCs == nullptr ? 0.0 : prevCs->getEnd(), cs->getEnd());
     auto newSectionTimes = oldSectionTimes + timeDelta;
 
     if (newSectionTimes.getStart() < 0.0)
@@ -284,10 +282,10 @@ TrackCompManager::CompSection* TrackCompManager::TrackComp::moveSection (CompSec
 
 TrackCompManager::CompSection* TrackCompManager::TrackComp::moveSectionEndTime (CompSection* cs, double newTime)
 {
-    const auto minSectionLength = 0.01;
+    const double minSectionLength = 0.01;
 
     juce::WeakReference<CompSection> prevCs = objects[objects.indexOf (cs) - 1];
-    juce::Range<double> oldSectionTimes (prevCs == nullptr ? 0.0 : prevCs->getEnd(), cs->getEnd());
+    EditTimeRange oldSectionTimes (prevCs == nullptr ? 0.0 : prevCs->getEnd(), cs->getEnd());
     auto newSectionTimes = oldSectionTimes.withEnd (newTime);
     auto um = &edit.getUndoManager();
 
@@ -315,7 +313,7 @@ TrackCompManager::CompSection* TrackCompManager::TrackComp::moveSectionEndTime (
     return cs;
 }
 
-int TrackCompManager::TrackComp::removeSectionsWithinRange (juce::Range<double> timeRange, CompSection* sectionToKeep)
+int TrackCompManager::TrackComp::removeSectionsWithinRange (EditTimeRange timeRange, CompSection* sectionToKeep)
 {
     int numRemoved = 0;
     auto sections = getSectionsForTrack ({});
@@ -401,7 +399,7 @@ juce::Array<TrackCompManager::TrackComp::Section> TrackCompManager::TrackComp::g
 
     for (auto cs : objects)
     {
-        const auto t = cs->getEnd();
+        const double t = cs->getEnd();
 
         if (! trackId.isValid() || cs->getTrack() == trackId)
             sections.add (Section { cs, { lastTime, t } });
@@ -413,7 +411,7 @@ juce::Array<TrackCompManager::TrackComp::Section> TrackCompManager::TrackComp::g
 }
 
 TrackCompManager::CompSection* TrackCompManager::TrackComp::findSectionWithEdgeTimeWithin (const Track::Ptr& track,
-                                                                                           juce::Range<double> timeRange,
+                                                                                           EditTimeRange timeRange,
                                                                                            bool& startEdge) const
 {
     for (const auto& section : getSectionsForTrack (track))
@@ -486,8 +484,8 @@ void TrackCompManager::TrackComp::convertFromSecondsToBeats()
 
     for (auto cs : objects)
     {
-        const auto s = cs->getEnd();
-        const auto b = ts.toBeats (TimePosition::fromSeconds (s)).inBeats();
+        const double s = cs->getEnd();
+        const double b = ts.timeToBeats (s);
         cs->state.setProperty (IDs::end, b, um);
         jassert (cs->getEnd() == b);
     }
@@ -500,8 +498,8 @@ void TrackCompManager::TrackComp::convertFromBeatsToSeconds()
 
     for (auto cs : objects)
     {
-        const auto b = cs->getEnd();
-        const auto s = ts.toTime (BeatPosition::fromBeats (b)).inSeconds();
+        const double b = cs->getEnd();
+        const double s = ts.beatsToTime (b);
         cs->state.setProperty (IDs::end, s, um);
         jassert (cs->getEnd() == s);
     }
@@ -643,4 +641,4 @@ TrackCompManager::TrackComp::Ptr TrackCompManager::getTrackComp (AudioTrack* at)
     return at == nullptr ? nullptr : trackCompList->objects[at->getCompGroup()];
 }
 
-}} // namespace tracktion { inline namespace engine
+}

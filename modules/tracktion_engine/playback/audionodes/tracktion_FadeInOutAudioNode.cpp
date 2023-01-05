@@ -8,11 +8,11 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 FadeInOutAudioNode::FadeInOutAudioNode (AudioNode* inp,
-                                        legacy::EditTimeRange in, legacy::EditTimeRange out,
+                                        EditTimeRange in, EditTimeRange out,
                                         AudioFadeCurve::Type fadeInType_,
                                         AudioFadeCurve::Type fadeOutType_,
                                         bool clearSamplesOutsideFade)
@@ -30,12 +30,12 @@ FadeInOutAudioNode::~FadeInOutAudioNode()
 {
 }
 
-int FadeInOutAudioNode::timeToSample (const AudioRenderContext& rc, legacy::EditTimeRange editTime, double t)
+static int timeToSample (const AudioRenderContext& rc, EditTimeRange editTime, double t)
 {
     return (int) (rc.bufferNumSamples * (t - editTime.getStart()) / editTime.getLength() + 0.5);
 }
 
-void FadeInOutAudioNode::renderSection (const AudioRenderContext& rc, legacy::EditTimeRange editTime)
+void FadeInOutAudioNode::renderSection (const AudioRenderContext& rc, EditTimeRange editTime)
 {
     if (editTime.overlaps (fadeIn) && fadeIn.getLength() > 0.0)
     {
@@ -150,13 +150,13 @@ void FadeInOutAudioNode::renderAdding (const AudioRenderContext& rc)
 
 AudioNode* FadeInOutAudioNode::createForEdit (Edit& edit, AudioNode* source)
 {
-    if (edit.masterFadeIn.get() > 0s || edit.masterFadeOut.get() > 0s)
+    if (edit.masterFadeIn > 0 || edit.masterFadeOut > 0)
     {
         auto length = edit.getLength();
 
         return new FadeInOutAudioNode (source,
-                                       { 0.0, edit.masterFadeIn.get().inSeconds() },
-                                       { length.inSeconds() - edit.masterFadeOut.get().inSeconds(), length.inSeconds() },
+                                       { 0.0, edit.masterFadeIn },
+                                       { length - edit.masterFadeOut, length },
                                        edit.masterFadeInType,
                                        edit.masterFadeOutType);
     }
@@ -164,4 +164,4 @@ AudioNode* FadeInOutAudioNode::createForEdit (Edit& edit, AudioNode* source)
     return source;
 }
 
-}} // namespace tracktion { inline namespace engine
+}

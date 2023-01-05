@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 #if JUCE_USE_LAME_AUDIO_FORMAT
@@ -54,4 +54,4 @@ bool LAMEManager::lameIsAvailable()         { return false; }
 
 #endif
 
-}} // namespace tracktion { inline namespace engine
+}

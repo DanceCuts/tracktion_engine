@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /**
@@ -71,16 +71,16 @@ private:
     A Node that handles muting/soloing of its input node, according to
     the audibility of a track.
 */
-class TrackMutingNode final : public tracktion::graph::Node
+class TrackMutingNode final : public tracktion_graph::Node
 {
 public:
-    TrackMutingNode (std::unique_ptr<TrackMuteState>, std::unique_ptr<tracktion::graph::Node> input,
+    TrackMutingNode (std::unique_ptr<TrackMuteState>, std::unique_ptr<tracktion_graph::Node> input,
                      bool dontMuteIfTrackContentsShouldBeProcessed);
 
     //==============================================================================
-    tracktion::graph::NodeProperties getNodeProperties() override;
+    tracktion_graph::NodeProperties getNodeProperties() override;
     std::vector<Node*> getDirectInputNodes() override;
-    void prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo&) override {}
+    void prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo&) override {}
     bool isReadyToProcess() override;
     void prefetchBlock (juce::Range<int64_t>) override;
     void process (ProcessContext&) override;
@@ -88,7 +88,7 @@ public:
 private:
     //==============================================================================
     std::unique_ptr<TrackMuteState> trackMuteState;
-    std::unique_ptr<tracktion::graph::Node> input;
+    std::unique_ptr<tracktion_graph::Node> input;
     bool dontMuteIfTrackContentsShouldBeProcessed = false;
 
     //==============================================================================
@@ -96,4 +96,4 @@ private:
     void sendAllNotesOffIfDesired (MidiMessageArray&);
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

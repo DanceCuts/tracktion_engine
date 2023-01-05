@@ -8,20 +8,20 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
 //==============================================================================
 namespace EditPlaybackContextInternal
 {
-    inline int& getThreadPoolStrategyType()
+    int& getThreadPoolStrategyType()
     {
-        static int type = static_cast<int> (tracktion::graph::ThreadPoolStrategy::lightweightSemHybrid);
+        static int type = static_cast<int> (tracktion_graph::ThreadPoolStrategy::lightweightSemHybrid);
         return type;
     }
 
-    inline bool& getPooledMemoryFlag()
+    bool& getPooledMemoryFlag()
     {
         static bool usePool = false;
         return usePool;
@@ -47,28 +47,28 @@ struct EditPlaybackContext::ContextSyncroniser
     struct SyncAndPosition
     {
         SyncAction action;
-        TimePosition position;
+        double position = 0.0;
     };
     
     //==============================================================================
-    SyncAndPosition getSyncAction (tracktion::graph::PlayHead& sourcePlayHead, tracktion::graph::PlayHead& destPlayHead,
+    SyncAndPosition getSyncAction (tracktion_graph::PlayHead& sourcePlayHead, tracktion_graph::PlayHead& destPlayHead,
                                    double sampleRate)
     {
         if (! isValid)
-            return  { SyncAction::none, {} };
+            return  { SyncAction::none, 0.0 };
         
-        const auto sourceTimelineTime = TimePosition::fromSamples (sourcePlayHead.getPosition(), sampleRate);
+        const auto sourceTimelineTime = tracktion_graph::sampleToTime (sourcePlayHead.getPosition(), sampleRate);
         const auto millisecondsSinceEpoch = std::chrono::duration_cast<std::chrono::milliseconds> (sourcePlayHead.getLastUserInteractionTime().time_since_epoch()).count();
         const juce::Time sourceLastInteractionTime (static_cast<int64_t> (millisecondsSinceEpoch));
 
-        const auto destTimelineTime = TimePosition::fromSamples (destPlayHead.getPosition(), sampleRate);
-        const auto destLoopDuration = TimeDuration::fromSamples (destPlayHead.getLoopRange().getLength(), sampleRate);
+        const auto destTimelineTime = tracktion_graph::sampleToTime (destPlayHead.getPosition(), sampleRate);
+        const auto destLoopDuration = tracktion_graph::sampleToTime (destPlayHead.getLoopRange().getLength(), sampleRate);
 
         return getSyncAction (sourceTimelineTime, sourcePlayHead.isPlaying(), sourceLastInteractionTime,
                               destTimelineTime, destPlayHead.isLooping(), destLoopDuration);
     }
     
-    void reset (TimePosition previousBarTime_, TimeDuration syncInterval_)
+    void reset (double previousBarTime_, double syncInterval_)
     {
         hasSynced = false;
         previousBarTime = previousBarTime_;
@@ -78,22 +78,22 @@ struct EditPlaybackContext::ContextSyncroniser
         
 private:
     //==============================================================================
-    TimePosition previousBarTime;
-    TimeDuration syncInterval;
-    TimePosition lastSourceTimelineTime;
+    double previousBarTime = 0;
+    double syncInterval = 0;
+    double lastSourceTimelineTime = 0;
     bool hasSynced = false, isValid = false;
 
-    SyncAndPosition getSyncAction (const TimePosition sourceTimelineTime, const bool sourceIsPlaying, const juce::Time sourceLastInteractionTime,
-                                   const TimePosition destTimelineTime, const bool destIsLooping, const TimeDuration destLoopDuration)
+    SyncAndPosition getSyncAction (const double sourceTimelineTime, const bool sourceIsPlaying, const juce::Time sourceLastInteractionTime,
+                                   const double destTimelineTime, const bool destIsLooping, const double destLoopDuration)
     {
-        const juce::ScopedValueSetter<TimePosition> lastSourceTimelineTimeUpdater (lastSourceTimelineTime, lastSourceTimelineTime,
-                                                                                   sourceTimelineTime);
+        const juce::ScopedValueSetter<double> lastSourceTimelineTimeUpdater (lastSourceTimelineTime, lastSourceTimelineTime,
+                                                                             sourceTimelineTime);
 
         if (! hasSynced)
         {
-            const auto sourceDurationSinceLastBarStart = TimeDuration::fromSeconds (std::fmod ((sourceTimelineTime - previousBarTime).inSeconds(), syncInterval.inSeconds()));
-            jassert (sourceTimelineTime - previousBarTime >= TimeDuration());
-            jassert (sourceDurationSinceLastBarStart > TimeDuration());
+            const auto sourceDurationSinceLastBarStart = std::fmod (sourceTimelineTime - previousBarTime, syncInterval);
+            jassert (sourceTimelineTime - previousBarTime >= 0);
+            jassert (sourceDurationSinceLastBarStart > 0);
             
             auto newTimelineTime = sourceDurationSinceLastBarStart - syncInterval;
 
@@ -101,13 +101,13 @@ private:
             if (destIsLooping && newTimelineTime < -syncInterval)
                 newTimelineTime = sourceDurationSinceLastBarStart;
 
-            newTimelineTime = TimeDuration::fromSeconds (std::fmod (newTimelineTime.inSeconds(), destLoopDuration.inSeconds()));
+            newTimelineTime = std::fmod (newTimelineTime, destLoopDuration);
             hasSynced = true;
 
-            return { SyncAction::rollInToLoop, toPosition (newTimelineTime) };
+            return { SyncAction::rollInToLoop, newTimelineTime };
         }
         
-        if (! sourceIsPlaying || std::abs (lastSourceTimelineTime.inSeconds() - sourceTimelineTime.inSeconds()) > 0.2)
+        if (! sourceIsPlaying || std::abs (lastSourceTimelineTime - sourceTimelineTime) > 0.2)
         {
             auto rt = juce::Time::getCurrentTime() - sourceLastInteractionTime;
 
@@ -116,20 +116,20 @@ private:
                 // user has moved  or stopped the playhead -- break the sync
                 isValid = false;
                 
-                return { SyncAction::breakSync, {} };
+                return { SyncAction::breakSync, 0.0 };
             }
             else
             {
                 // This +0.1 is here to prevent rounding errors causing the playhead to jump back by a sync interval each loop iteration
-                const auto sourceDurationSinceLastBarStart = TimeDuration::fromSeconds (std::fmod ((sourceTimelineTime - previousBarTime).inSeconds(), syncInterval.inSeconds()));
-                auto newTimelineTime = syncInterval * std::floor ((destTimelineTime.inSeconds() + 0.1) / syncInterval.inSeconds()) + sourceDurationSinceLastBarStart;
-                newTimelineTime = TimeDuration::fromSeconds (std::fmod (newTimelineTime.inSeconds(), destLoopDuration.inSeconds()));
+                const auto sourceDurationSinceLastBarStart = std::fmod (sourceTimelineTime - previousBarTime, syncInterval);
+                auto newTimelineTime = std::floor ((destTimelineTime + 0.1) / syncInterval) * syncInterval + sourceDurationSinceLastBarStart;
+                newTimelineTime = std::fmod (newTimelineTime, destLoopDuration);
 
-                return { SyncAction::rollInToLoop, toPosition (newTimelineTime) };
+                return { SyncAction::rollInToLoop, newTimelineTime };
             }
         }
 
-        return { SyncAction::none, {} };
+        return { SyncAction::none, 0.0 };
     }
 };
 
@@ -138,9 +138,8 @@ private:
 //==============================================================================
  struct EditPlaybackContext::NodePlaybackContext
  {
-     NodePlaybackContext (const TempoSequence& ts, size_t numThreads, size_t maxNumThreadsToUse)
-        : tempoSequence (ts),
-          player (processState, getPoolCreatorFunction (static_cast<tracktion::graph::ThreadPoolStrategy> (getThreadPoolStrategy()))),
+     NodePlaybackContext (size_t numThreads, size_t maxNumThreadsToUse)
+        : player (processState, getPoolCreatorFunction (static_cast<tracktion_graph::ThreadPoolStrategy> (getThreadPoolStrategy()))),
           maxNumThreads (maxNumThreadsToUse)
      {
          setNumThreads (numThreads);
@@ -174,9 +173,9 @@ private:
          return latencySamples;
      }
      
-     void postPosition (TimePosition newPosition)
+     void postPosition (double newPosition)
      {
-         pendingPosition.store (newPosition.inSeconds(), std::memory_order_release);
+         pendingPosition.store (newPosition, std::memory_order_release);
          pendingRollInToLoop.store (false, std::memory_order_release);
          positionUpdatePending = true;
      }
@@ -192,39 +191,26 @@ private:
      {
          speedCompensation = juce::jlimit (-10.0, 10.0, plusOrMinus);
      }
-
-     void setTempoAdjustment (double plusOrMinusProportion)
-     {
-         blockLengthScaleFactor = 1.0 + std::clamp (plusOrMinusProportion, -0.5, 0.5);
-     }
      
      void updateReferenceSampleRange (int numSamples)
      {
          if (speedCompensation != 0.0)
              numSamples = juce::roundToInt (numSamples * (1.0 + (speedCompensation * 0.01)));
 
-         double sampleDuration = static_cast<double> (numSamples);
-
-         if (blockLengthScaleFactor != 1.0)
-             sampleDuration *= blockLengthScaleFactor;
-
-         referenceStreamRange = juce::Range<double>::withStartAndLength (referenceStreamRange.getEnd(), sampleDuration);
-         playHead.setReferenceSampleRange (getReferenceSampleRange());
-         numSamplesToProcess = static_cast<choc::buffer::FrameCount> (numSamples);
-         processState.setPlaybackSpeedRatio (blockLengthScaleFactor);
+         referenceSampleRange = juce::Range<int64_t>::withStartAndLength (referenceSampleRange.getEnd(), (int64_t) numSamples);
+         playHead.setReferenceSampleRange (referenceSampleRange);
      }
      
      void resyncToReferenceSampleRange (juce::Range<int64_t> newReferenceSampleRange)
      {
          const double sampleRate = getSampleRate();
-         const auto currentPos = tracktion::graph::sampleToTime (playHead.getPosition(), sampleRate);
-         referenceStreamRange = juce::Range<double> (static_cast<double> (newReferenceSampleRange.getStart()),
-                                                     static_cast<double> (newReferenceSampleRange.getEnd()));
-         playHead.setReferenceSampleRange (getReferenceSampleRange());
-         playHead.setPosition (tracktion::graph::timeToSample (currentPos, sampleRate));
+         const auto currentPos = tracktion_graph::sampleToTime (playHead.getPosition(), sampleRate);
+         referenceSampleRange = newReferenceSampleRange;
+         playHead.setReferenceSampleRange (referenceSampleRange);
+         playHead.setPosition (tracktion_graph::timeToSample (currentPos, sampleRate));
      }
      
-     void process (float* const* allChannels, int numChannels, int destNumSamples)
+     void process (float** allChannels, int numChannels, int destNumSamples)
      {
          if (positionUpdatePending.exchange (false))
          {
@@ -235,25 +221,25 @@ private:
              else
                  playHead.setPosition (samplePos);
          }
-
-         const auto referenceSampleRange = getReferenceSampleRange();
+         
+         const auto numSamples = referenceSampleRange.getLength();
          scratchMidiBuffer.clear();
 
-         if (isUsingInterpolator || destNumSamples != (int) numSamplesToProcess)
+         if (isUsingInterpolator || destNumSamples != numSamples)
          {
              // Initialise interpolators
              isUsingInterpolator = true;
              ensureNumInterpolators (numChannels);
              
              // Process required num samples
-             scratchAudioBuffer.setSize (numChannels, (int) numSamplesToProcess, false, false, true);
+             scratchAudioBuffer.setSize (numChannels, (int) numSamples, false, false, true);
              scratchAudioBuffer.clear();
              
-             tracktion::graph::Node::ProcessContext pc { numSamplesToProcess, referenceSampleRange, { tracktion::graph::toBufferView (scratchAudioBuffer), scratchMidiBuffer } };
+             tracktion_graph::Node::ProcessContext pc { referenceSampleRange, { tracktion_graph::toBufferView (scratchAudioBuffer), scratchMidiBuffer } };
              player.process (pc);
              
              // Then resample them to the dest num samples
-             const double ratio = numSamplesToProcess / (double) destNumSamples;
+             const double ratio = numSamples / (double) destNumSamples;
              
              for (int channel = 0; channel < numChannels; ++channel)
              {
@@ -267,8 +253,8 @@ private:
          {
              auto audioView = choc::buffer::createChannelArrayView (allChannels,
                                                                     (choc::buffer::ChannelCount) numChannels,
-                                                                    numSamplesToProcess);
-             tracktion::graph::Node::ProcessContext pc { numSamplesToProcess, referenceSampleRange, { audioView, scratchMidiBuffer } };
+                                                                    (choc::buffer::FrameCount) numSamples);
+             tracktion_graph::Node::ProcessContext pc { referenceSampleRange, { audioView, scratchMidiBuffer } };
              player.process (pc);
          }
      }
@@ -277,11 +263,10 @@ private:
      {
          return player.getSampleRate();
      }
-
-     const TempoSequence& tempoSequence;
-     tracktion::graph::PlayHead playHead;
-     tracktion::graph::PlayHeadState playHeadState { playHead };
-     ProcessState processState { playHeadState, tempoSequence };
+     
+     tracktion_graph::PlayHead playHead;
+     tracktion_graph::PlayHeadState playHeadState { playHead };
+     ProcessState processState { playHeadState };
      
  private:
      juce::AudioBuffer<float> scratchAudioBuffer;
@@ -290,19 +275,12 @@ private:
      const size_t maxNumThreads;
      
      int latencySamples = 0;
-     choc::buffer::FrameCount numSamplesToProcess = 0;
-     juce::Range<double> referenceStreamRange;
+     juce::Range<int64_t> referenceSampleRange;
      std::atomic<double> pendingPosition { 0.0 };
      std::atomic<bool> positionUpdatePending { false }, pendingRollInToLoop { false };
-     double speedCompensation = 0.0, blockLengthScaleFactor = 1.0;
+     double speedCompensation = 0.0;
      std::vector<std::unique_ptr<juce::LagrangeInterpolator>> interpolators;
      bool isUsingInterpolator = false;
-
-     juce::Range<int64_t> getReferenceSampleRange() const
-     {
-         return { static_cast<int64_t> (std::llround (referenceStreamRange.getStart())),
-                  static_cast<int64_t> (std::llround (referenceStreamRange.getEnd())) };
-     }
      
      void ensureNumInterpolators (int numRequired)
      {
@@ -340,8 +318,7 @@ EditPlaybackContext::EditPlaybackContext (TransportControl& tc)
 
     if (edit.shouldPlay())
     {
-        nodePlaybackContext = std::make_unique<NodePlaybackContext> (edit.tempoSequence,
-                                                                     edit.engine.getEngineBehaviour().getNumberOfCPUsToUseForAudio(),
+        nodePlaybackContext = std::make_unique<NodePlaybackContext> (edit.engine.getEngineBehaviour().getNumberOfCPUsToUseForAudio(),
                                                                      size_t (edit.getIsPreviewEdit() ? 0 : juce::SystemStats::getNumCpus() - 1));
         contextSyncroniser = std::make_unique<ContextSyncroniser>();
 
@@ -354,9 +331,10 @@ EditPlaybackContext::EditPlaybackContext (TransportControl& tc)
 
 EditPlaybackContext::~EditPlaybackContext()
 {
-    TRACKTION_ASSERT_MESSAGE_THREAD
-    releaseDeviceList();
     edit.engine.getDeviceManager().removeContext (this);
+
+    clearNodes();
+    midiDispatcher.setMidiDeviceList (juce::OwnedArray<MidiOutputDeviceInstance>());
 }
 
 void EditPlaybackContext::releaseDeviceList()
@@ -497,34 +475,34 @@ void EditPlaybackContext::createNode()
     cnp.includeBypassedPlugins = ! edit.engine.getEngineBehaviour().shouldBypassedPluginsBeRemovedFromPlaybackGraph();
     auto editNode = createNodeForEdit (*this, audiblePlaybackTime, cnp);
 
-    const auto& tempoSequence = edit.tempoSequence.getInternalSequence();
-    const bool hasTempoChanged = tempoSequence.hash() != lastTempoSequence.hash();
+    const auto& tempoSections = edit.tempoSequence.getTempoSections();
+    const bool hasTempoChanged = tempoSections.getChangeCount() != lastTempoSections.getChangeCount();
 
     nodePlaybackContext->setNode (std::move (editNode), cnp.sampleRate, cnp.blockSize);
     updateNumCPUs();
 
-    if (hasTempoChanged)
+    if (hasTempoChanged && lastTempoSections.size() > 0)
     {
         const auto sampleRate = cnp.sampleRate;
-        const auto lastTime = TimePosition::fromSamples (nodePlaybackContext->playHead.getPosition(), sampleRate);
-        const auto lastBeats = lastTempoSequence.toBeats (lastTime);
-        const auto lastPositionRemapped = tempoSequence.toTime (lastBeats);
+        const auto lastTime = sampleToTime (nodePlaybackContext->playHead.getPosition(), sampleRate);
+        const auto lastBeats = lastTempoSections.timeToBeats (lastTime);
+        const auto lastPositionRemapped = tempoSections.beatsToTime (lastBeats);
 
-        const auto lastSampleRemapped = toSamples (lastPositionRemapped, sampleRate);
+        const auto lastSampleRemapped = timeToSample (lastPositionRemapped, sampleRate);
         nodePlaybackContext->playHead.overridePosition (lastSampleRemapped);
     }
 
     if (hasTempoChanged)
-        lastTempoSequence = tempoSequence;
+        lastTempoSections = tempoSections;
 }
 
-void EditPlaybackContext::createPlayAudioNodes (TimePosition startTime)
+void EditPlaybackContext::createPlayAudioNodes (double startTime)
 {
     createNode();
     startPlaying (startTime);
 }
 
-void EditPlaybackContext::createPlayAudioNodesIfNeeded (TimePosition startTime)
+void EditPlaybackContext::createPlayAudioNodesIfNeeded (double startTime)
 {
     if (! isAllocated)
         createPlayAudioNodes (startTime);
@@ -535,7 +513,7 @@ void EditPlaybackContext::reallocate()
     createPlayAudioNodes (getPosition());
 }
 
-void EditPlaybackContext::startPlaying (TimePosition start)
+void EditPlaybackContext::startPlaying (double start)
 {
     prepareOutputDevices (start);
 
@@ -546,7 +524,7 @@ void EditPlaybackContext::startPlaying (TimePosition start)
         mo->start();
 }
 
-void EditPlaybackContext::startRecording (TimePosition start, TimePosition punchIn)
+void EditPlaybackContext::startRecording (double start, double punchIn)
 {
     auto& dm = edit.engine.getDeviceManager();
     auto sampleRate = dm.getSampleRate();
@@ -590,18 +568,14 @@ void EditPlaybackContext::startRecording (TimePosition start, TimePosition punch
     }
 }
 
-void EditPlaybackContext::prepareOutputDevices (TimePosition start)
+void EditPlaybackContext::prepareOutputDevices (double start)
 {
     CRASH_TRACER
     auto& dm = edit.engine.getDeviceManager();
     double sampleRate = dm.getSampleRate();
     int blockSize = dm.getBlockSize();
 
-    // TODO: This feels wrong now as the global stream time should be a TimePosition...
-    // It looks like start already is an EditTime
-    // It also looks like MidiOutputDeviceInstance::prepareToPlay doesn't actually use the
-    // time so is likely to be a wrong but unused step
-    start = globalStreamTimeToEditTime (start.inSeconds());
+    start = globalStreamTimeToEditTime (start);
 
     for (auto wo : waveOutputs)
         wo->prepareToPlay (sampleRate, blockSize);
@@ -612,12 +586,12 @@ void EditPlaybackContext::prepareOutputDevices (TimePosition start)
     midiDispatcher.prepareToPlay (start);
 }
 
-void EditPlaybackContext::prepareForPlaying (TimePosition startTime)
+void EditPlaybackContext::prepareForPlaying (double startTime)
 {
     createPlayAudioNodesIfNeeded (startTime);
 }
 
-void EditPlaybackContext::prepareForRecording (TimePosition startTime, TimePosition punchIn)
+void EditPlaybackContext::prepareForRecording (double startTime, double punchIn)
 {
     createPlayAudioNodesIfNeeded (startTime);
     startRecording (startTime, punchIn);
@@ -636,7 +610,7 @@ static SelectionManager* findAppropriateSelectionManager (Edit& ed)
     return found;
 }
 
-Clip::Array EditPlaybackContext::stopRecording (InputDeviceInstance& in, TimeRange recordedRange, bool discardRecordings)
+Clip::Array EditPlaybackContext::stopRecording (InputDeviceInstance& in, EditTimeRange recordedRange, bool discardRecordings)
 {
     TRACKTION_ASSERT_MESSAGE_THREAD
     CRASH_TRACER
@@ -653,7 +627,7 @@ Clip::Array EditPlaybackContext::stopRecording (InputDeviceInstance& in, TimeRan
     return clips;
 }
 
-Clip::Array EditPlaybackContext::recordingFinished (TimeRange recordedRange, bool discardRecordings)
+Clip::Array EditPlaybackContext::recordingFinished (EditTimeRange recordedRange, bool discardRecordings)
 {
     TRACKTION_ASSERT_MESSAGE_THREAD
     CRASH_TRACER
@@ -717,7 +691,7 @@ juce::Array<InputDeviceInstance*> EditPlaybackContext::getAllInputs()
 }
 
 //==============================================================================
-void EditPlaybackContext::fillNextNodeBlock (float* const* allChannels, int numChannels, int numSamples)
+void EditPlaybackContext::fillNextNodeBlock (float** allChannels, int numChannels, int numSamples)
 {
     CRASH_TRACER
 
@@ -747,7 +721,7 @@ void EditPlaybackContext::fillNextNodeBlock (float* const* allChannels, int numC
             }
             case ContextSyncroniser::SyncAction::rollInToLoop:
             {
-                nodePlaybackContext->postRollInToLoop (newTimelineTime.inSeconds());
+                nodePlaybackContext->postRollInToLoop (newTimelineTime);
                 break;
             }
             case ContextSyncroniser::SyncAction::breakSync:
@@ -758,13 +732,9 @@ void EditPlaybackContext::fillNextNodeBlock (float* const* allChannels, int numC
         }
     }
 
-    const auto editTime = TimePosition::fromSamples (nodePlaybackContext->playHead.getPosition(), nodePlaybackContext->getSampleRate());
+    const double editTime = tracktion_graph::sampleToTime (nodePlaybackContext->playHead.getPosition(), nodePlaybackContext->getSampleRate());
     edit.updateModifierTimers (editTime, numSamples);
     midiDispatcher.masterTimeUpdate (editTime);
-
-   #if TRACKTION_ENABLE_ABLETON_LINK
-    edit.getAbletonLink().syncronise (editTime);
-   #endif
 
     nodePlaybackContext->process (allChannels, numChannels, numSamples);
     
@@ -803,7 +773,7 @@ OutputDeviceInstance* EditPlaybackContext::getOutputFor (OutputDevice* d) const
 }
 
 void EditPlaybackContext::syncToContext (EditPlaybackContext* newContextToSyncTo,
-                                         TimePosition newPreviousBarTime, TimeDuration newSyncInterval)
+                                         double newPreviousBarTime, double newSyncInterval)
 {
     contextToSyncTo = newContextToSyncTo;
     previousBarTime = newPreviousBarTime;
@@ -839,7 +809,7 @@ void EditPlaybackContext::setAddAntiDenormalisationNoise (Engine& e, bool b)
 }
 
 //==============================================================================
-tracktion::graph::PlayHead* EditPlaybackContext::getNodePlayHead() const
+tracktion_graph::PlayHead* EditPlaybackContext::getNodePlayHead() const
 {
     //TODO  can this be removed?
     return nodePlaybackContext ? &nodePlaybackContext->playHead
@@ -862,22 +832,22 @@ bool EditPlaybackContext::isDragging() const
     return nodePlaybackContext->playHead.isUserDragging();
 }
 
-TimePosition EditPlaybackContext::getPosition() const
+double EditPlaybackContext::getPosition() const
 {
-    return TimePosition::fromSamples (nodePlaybackContext->playHead.getPosition(),
-                                      nodePlaybackContext->getSampleRate());
+    return tracktion_graph::sampleToTime (nodePlaybackContext->playHead.getPosition(),
+                                          nodePlaybackContext->getSampleRate());
 }
 
-TimePosition EditPlaybackContext::getUnloopedPosition() const
+double EditPlaybackContext::getUnloopedPosition() const
 {
-    return TimePosition::fromSamples (nodePlaybackContext->playHead.getUnloopedPosition(),
-                                      nodePlaybackContext->getSampleRate());
+    return tracktion_graph::sampleToTime (nodePlaybackContext->playHead.getUnloopedPosition(),
+                                          nodePlaybackContext->getSampleRate());
 }
 
-TimeRange EditPlaybackContext::getLoopTimes() const
+EditTimeRange EditPlaybackContext::getLoopTimes() const
 {
-    return tracktion::timeRangeFromSamples (nodePlaybackContext->playHead.getLoopRange(),
-                                                  nodePlaybackContext->getSampleRate());
+    return tracktion_graph::sampleToTime (nodePlaybackContext->playHead.getLoopRange(),
+                                          nodePlaybackContext->getSampleRate());
 }
 
 int EditPlaybackContext::getLatencySamples() const
@@ -886,10 +856,10 @@ int EditPlaybackContext::getLatencySamples() const
                                : 0;
 }
 
-TimePosition EditPlaybackContext::getAudibleTimelineTime()
+double EditPlaybackContext::getAudibleTimelineTime()
 {
-    return nodePlaybackContext ? TimePosition::fromSeconds (audiblePlaybackTime.load())
-                               : transport.getPosition();
+    return nodePlaybackContext ? audiblePlaybackTime.load()
+                               : transport.getCurrentPosition();
 }
 
 double EditPlaybackContext::getSampleRate() const
@@ -910,13 +880,7 @@ void EditPlaybackContext::setSpeedCompensation (double plusOrMinus)
         nodePlaybackContext->setSpeedCompensation (plusOrMinus);
 }
 
-void EditPlaybackContext::setTempoAdjustment (double plusOrMinusProportion)
-{
-    if (nodePlaybackContext)
-        nodePlaybackContext->setTempoAdjustment (plusOrMinusProportion);
-}
-
-void EditPlaybackContext::postPosition (TimePosition newPosition)
+void EditPlaybackContext::postPosition (double newPosition)
 {
     if (nodePlaybackContext)
         nodePlaybackContext->postPosition (newPosition);
@@ -934,28 +898,28 @@ void EditPlaybackContext::stop()
         nodePlaybackContext->playHead.stop();
 }
 
-TimePosition EditPlaybackContext::globalStreamTimeToEditTime (double globalStreamTime) const
+double EditPlaybackContext::globalStreamTimeToEditTime (double globalStreamTime) const
 {
     if (! nodePlaybackContext)
-        return TimePosition();
+        return 0.0;
     
     const auto sampleRate = getSampleRate();
-    const auto globalSamplePos = tracktion::graph::timeToSample (globalStreamTime, sampleRate);
+    const auto globalSamplePos = tracktion_graph::timeToSample (globalStreamTime, sampleRate);
     const auto timelinePosition = nodePlaybackContext->playHead.referenceSamplePositionToTimelinePosition (globalSamplePos);
     
-    return TimePosition::fromSamples (timelinePosition, sampleRate);
+    return tracktion_graph::sampleToTime (timelinePosition, sampleRate);
 }
 
-TimePosition EditPlaybackContext::globalStreamTimeToEditTimeUnlooped (double globalStreamTime) const
+double EditPlaybackContext::globalStreamTimeToEditTimeUnlooped (double globalStreamTime) const
 {
     if (! nodePlaybackContext)
-        return TimePosition();
+        return 0.0;
     
     const auto sampleRate = getSampleRate();
-    const auto globalSamplePos = tracktion::graph::timeToSample (globalStreamTime, sampleRate);
+    const auto globalSamplePos = tracktion_graph::timeToSample (globalStreamTime, sampleRate);
     const auto timelinePosition = nodePlaybackContext->playHead.referenceSamplePositionToTimelinePositionUnlooped (globalSamplePos);
     
-    return TimePosition::fromSamples (timelinePosition, sampleRate);
+    return tracktion_graph::sampleToTime (timelinePosition, sampleRate);
 }
 
 void EditPlaybackContext::resyncToGlobalStreamTime (juce::Range<double> globalStreamTime, double sampleRate)
@@ -963,14 +927,14 @@ void EditPlaybackContext::resyncToGlobalStreamTime (juce::Range<double> globalSt
     if (! nodePlaybackContext)
         return;
     
-    const auto globalSampleRange = tracktion::graph::timeToSample (globalStreamTime, sampleRate);
+    const auto globalSampleRange = tracktion_graph::timeToSample (globalStreamTime, sampleRate);
     nodePlaybackContext->resyncToReferenceSampleRange (globalSampleRange);
 }
 
 void EditPlaybackContext::setThreadPoolStrategy (int type)
 {
-    type = juce::jlimit (static_cast<int> (tracktion::graph::ThreadPoolStrategy::conditionVariable),
-                         static_cast<int> (tracktion::graph::ThreadPoolStrategy::lightweightSemHybrid),
+    type = juce::jlimit (static_cast<int> (tracktion_graph::ThreadPoolStrategy::conditionVariable),
+                         static_cast<int> (tracktion_graph::ThreadPoolStrategy::lightweightSemHybrid),
                          type);
 
     EditPlaybackContextInternal::getThreadPoolStrategyType() = type;
@@ -978,8 +942,8 @@ void EditPlaybackContext::setThreadPoolStrategy (int type)
 
 int EditPlaybackContext::getThreadPoolStrategy()
 {
-    const int type = juce::jlimit (static_cast<int> (tracktion::graph::ThreadPoolStrategy::conditionVariable),
-                                   static_cast<int> (tracktion::graph::ThreadPoolStrategy::lightweightSemHybrid),
+    const int type = juce::jlimit (static_cast<int> (tracktion_graph::ThreadPoolStrategy::conditionVariable),
+                                   static_cast<int> (tracktion_graph::ThreadPoolStrategy::lightweightSemHybrid),
                                    EditPlaybackContextInternal::getThreadPoolStrategyType());
     
     return type;
@@ -993,7 +957,7 @@ void EditPlaybackContext::enablePooledMemory (bool enable)
 //==============================================================================
 static int numHighPriorityPlayers = 0, numRealtimeDefeaters = 0;
 
-inline void updateProcessPriority (Engine& engine)
+void updateProcessPriority (Engine& engine)
 {
     int level = 0;
 
@@ -1008,4 +972,4 @@ EditPlaybackContext::ProcessPriorityBooster::~ProcessPriorityBooster()          
 EditPlaybackContext::RealtimePriorityDisabler::RealtimePriorityDisabler (Engine& e) : engine (e)    { ++numRealtimeDefeaters; updateProcessPriority (engine); }
 EditPlaybackContext::RealtimePriorityDisabler::~RealtimePriorityDisabler()                          { --numRealtimeDefeaters; updateProcessPriority (engine); }
 
-}} // namespace tracktion { inline namespace engine
+}

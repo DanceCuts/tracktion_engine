@@ -8,37 +8,37 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
 //==============================================================================
-LiveMidiOutputNode::LiveMidiOutputNode (AudioTrack& at, std::unique_ptr<tracktion::graph::Node> inputNode)
+LiveMidiOutputNode::LiveMidiOutputNode (AudioTrack& at, std::unique_ptr<tracktion_graph::Node> inputNode)
     : track (&at), trackPtr (at), input (std::move (inputNode))
 {
     jassert (input);
 
-    setOptimisations ({ tracktion::graph::ClearBuffers::no,
-                        tracktion::graph::AllocateAudioBuffer::no });
+    setOptimisations ({ tracktion_graph::ClearBuffers::no,
+                        tracktion_graph::AllocateAudioBuffer::no });
 
     pendingMessages.reserve (50);
     dispatchingMessages.reserve (50);
 }
 
-LiveMidiOutputNode::LiveMidiOutputNode (Clip& c, std::unique_ptr<tracktion::graph::Node> inputNode)
+LiveMidiOutputNode::LiveMidiOutputNode (Clip& c, std::unique_ptr<tracktion_graph::Node> inputNode)
     : clipPtr (c), input (std::move (inputNode))
 {
     jassert (input);
 
-    setOptimisations ({ tracktion::graph::ClearBuffers::no,
-                        tracktion::graph::AllocateAudioBuffer::no });
+    setOptimisations ({ tracktion_graph::ClearBuffers::no,
+                        tracktion_graph::AllocateAudioBuffer::no });
 
     pendingMessages.reserve (50);
     dispatchingMessages.reserve (50);
 }
 
 //==============================================================================
-tracktion::graph::NodeProperties LiveMidiOutputNode::getNodeProperties()
+tracktion_graph::NodeProperties LiveMidiOutputNode::getNodeProperties()
 {
     auto props = input->getNodeProperties();
     props.nodeID = 0;
@@ -46,12 +46,12 @@ tracktion::graph::NodeProperties LiveMidiOutputNode::getNodeProperties()
     return props;
 }
 
-std::vector<tracktion::graph::Node*> LiveMidiOutputNode::getDirectInputNodes()
+std::vector<tracktion_graph::Node*> LiveMidiOutputNode::getDirectInputNodes()
 {
     return { input.get() };
 }
 
-void LiveMidiOutputNode::prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo&)
+void LiveMidiOutputNode::prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo&)
 {
 }
 
@@ -108,4 +108,4 @@ void LiveMidiOutputNode::handleAsyncUpdate()
     dispatchingMessages.clear();
 }
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

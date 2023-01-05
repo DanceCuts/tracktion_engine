@@ -8,13 +8,13 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /**
     A Node that intercepts incoming live audio and inserts it in to the playback graph.
 */
-class WaveInputDeviceNode final : public tracktion::graph::Node,
+class WaveInputDeviceNode final : public tracktion_graph::Node,
                                   public InputDeviceInstance::Consumer
 {
 public:
@@ -22,8 +22,8 @@ public:
                          const juce::AudioChannelSet& destChannelsToFill);
     ~WaveInputDeviceNode() override;
     
-    tracktion::graph::NodeProperties getNodeProperties() override;
-    void prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo&) override;
+    tracktion_graph::NodeProperties getNodeProperties() override;
+    void prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo&) override;
     bool isReadyToProcess() override;
     void process (ProcessContext&) override;
 
@@ -34,8 +34,8 @@ private:
     InputDeviceInstance& instance;
     WaveInputDevice& waveInputDevice;
     uint32_t lastCallbackTime = 0;
-    tracktion::graph::AudioFifo audioFifo { 1, 32 };
+    tracktion_graph::AudioFifo audioFifo { 1, 32 };
     const juce::AudioChannelSet destChannels;
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 // Defined in ExternalPlugin.cpp to clean up plugins waiting to be deleted
@@ -16,7 +16,7 @@ extern void cleanUpDanglingPlugins();
 
 static const char* commandLineUID = "PluginScan";
 
-inline juce::MemoryBlock createScanMessage (const juce::XmlElement& xml)
+juce::MemoryBlock createScanMessage (const juce::XmlElement& xml)
 {
     juce::MemoryOutputStream mo;
     xml.writeTo (mo, juce::XmlElement::TextFormat().withoutHeader().singleLine());
@@ -381,7 +381,7 @@ struct CustomScanner  : public juce::KnownPluginList::CustomScanner
 };
 
 //==============================================================================
-inline SettingID getPluginListPropertyName()
+SettingID getPluginListPropertyName()
 {
    #if JUCE_64BIT
     return SettingID::knownPluginList64;
@@ -651,24 +651,12 @@ void PluginManager::changeListenerCallback (juce::ChangeBroadcaster*)
 
 Plugin::Ptr PluginManager::createExistingPlugin (Edit& ed, const juce::ValueTree& v)
 {
-    if (auto p = createPlugin (ed, v, false))
-    {
-        p->initialiseFully();
-        return p;
-    }
-
-    return {};
+    return createPlugin (ed, v, false);
 }
 
 Plugin::Ptr PluginManager::createNewPlugin (Edit& ed, const juce::ValueTree& v)
 {
-    if (auto p = createPlugin (ed, v, true))
-    {
-        p->initialiseFully();
-        return p;
-    }
-
-    return {};
+    return createPlugin (ed, v, true);
 }
 
 Plugin::Ptr PluginManager::createNewPlugin (Edit& ed, const juce::String& type, const juce::PluginDescription& desc)
@@ -811,16 +799,6 @@ Plugin::Ptr PluginManager::createPlugin (Edit& ed, const juce::ValueTree& v, boo
 }
 
 //==============================================================================
-void PluginManager::registerBuiltInType (std::unique_ptr<BuiltInType> t)
-{
-    for (auto builtIn : builtInTypes)
-        if (builtIn->type == t->type)
-            return;
-
-    builtInTypes.add (t.release());
-}
-
-//==============================================================================
 PluginCache::PluginCache (Edit& ed) : edit (ed)
 {
     startTimer (1000);
@@ -956,4 +934,4 @@ void PluginCache::timerCallback()
     }
 }
 
-}} // namespace tracktion { inline namespace engine
+}

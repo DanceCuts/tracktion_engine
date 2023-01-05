@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 struct BankSet
@@ -32,7 +32,7 @@ struct ProgramSet
     juce::OwnedArray<BankSet> banks;
 };
 
-inline std::unique_ptr<juce::XmlElement> exportProgramSet (ProgramSet& set)
+std::unique_ptr<juce::XmlElement> exportProgramSet (ProgramSet& set)
 {
     if (set.banks.isEmpty())
         return {};
@@ -58,7 +58,7 @@ inline std::unique_ptr<juce::XmlElement> exportProgramSet (ProgramSet& set)
     return rootXml;
 }
 
-inline BankSet* getBankSet (ProgramSet& set, const juce::String& name)
+BankSet* getBankSet (ProgramSet& set, const juce::String& name)
 {
     for (int i = 0; i < set.banks.size(); ++i)
         if (set.banks.getUnchecked (i)->name == name)
@@ -67,7 +67,7 @@ inline BankSet* getBankSet (ProgramSet& set, const juce::String& name)
     return set.banks.add (new BankSet (name));
 }
 
-inline std::unique_ptr<juce::XmlElement> convertMidnamToXml (const juce::File& src)
+std::unique_ptr<juce::XmlElement> convertMidnamToXml (const juce::File& src)
 {
     juce::String manufacturer;
     juce::StringArray models;
@@ -552,4 +552,4 @@ juce::String MidiProgramManager::getPresetXml (juce::String presetName)
     return {};
 }
 
-}} // namespace tracktion { inline namespace engine
+}

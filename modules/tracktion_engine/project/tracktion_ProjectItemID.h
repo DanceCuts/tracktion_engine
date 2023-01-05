@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /**
@@ -68,14 +68,14 @@ private:
     ProjectItemID (const juce::var&) = delete;
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine
 
 namespace juce
 {
     template <>
-    struct VariantConverter<tracktion::engine::ProjectItemID>
+    struct VariantConverter<tracktion_engine::ProjectItemID>
     {
-        static tracktion::engine::ProjectItemID fromVar (const var& v)   { return tracktion::engine::ProjectItemID (v.toString()); }
-        static var toVar (const tracktion::engine::ProjectItemID& v)     { return v.toString(); }
+        static tracktion_engine::ProjectItemID fromVar (const var& v)   { return tracktion_engine::ProjectItemID (v.toString()); }
+        static var toVar (const tracktion_engine::ProjectItemID& v)     { return v.toString(); }
     };
 }

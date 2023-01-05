@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -38,29 +38,29 @@ struct TimecodeSnapType
 
     //==============================================================================
     juce::String getDescription (const TempoSetting&, bool isTripletOverride) const;
-    TimeDuration getApproxIntervalTime (const TempoSetting&) const; // may not be accurate for stuff like ramped tempos
+    double getApproxIntervalTime (const TempoSetting&) const; // may not be accurate for stuff like ramped tempos
 
     /** Similar to above expect that the isTripletsOverride argument is used instead of the tempo owner sequence. */
-    TimeDuration getApproxIntervalTime (const TempoSetting&, bool isTripletsOverride) const; // may not be accurate for stuff like ramped tempos
+    double getApproxIntervalTime (const TempoSetting&, bool isTripletsOverride) const; // may not be accurate for stuff like ramped tempos
 
-    juce::String getTimecodeString (TimePosition time,
+    juce::String getTimecodeString (double time,
                                     const TempoSequence&,
                                     bool useStartLabelIfZero) const;
 
-    TimePosition roundTimeDown (TimePosition, const TempoSequence&) const;
-    TimePosition roundTimeDown (TimePosition, const TempoSequence&, bool isTripletsOverride) const;
-    TimePosition roundTimeNearest (TimePosition, const TempoSequence&) const;
-    TimePosition roundTimeNearest (TimePosition, const TempoSequence&, bool isTripletsOverride) const;
-    TimePosition roundTimeUp (TimePosition, const TempoSequence&) const;
-    TimePosition roundTimeUp (TimePosition, const TempoSequence&, bool tripletsOverride) const;
+    double roundTimeDown (double t, const TempoSequence&) const;
+    double roundTimeDown (double t, const TempoSequence&, bool isTripletsOverride) const;
+    double roundTimeNearest (double t, const TempoSequence&) const;
+    double roundTimeNearest (double t, const TempoSequence&, bool isTripletsOverride) const;
+    double roundTimeUp (double t, const TempoSequence&) const;
+    double roundTimeUp (double t, const TempoSequence&, bool tripletsOverride) const;
 
     //==============================================================================
     int getLevel() const noexcept                   { return level; }
     int getOneBarLevel() const noexcept;
 
     // find the maximum snap level for which this time can be considered 'on an interval'
-    TimecodeSnapType getSnapTypeForMaximumSnapLevelOf (TimePosition, const TempoSequence&) const;
-    TimecodeSnapType getSnapTypeForMaximumSnapLevelOf (TimePosition, const TempoSequence&, bool isTripletsOverride) const;
+    TimecodeSnapType getSnapTypeForMaximumSnapLevelOf (double t, const TempoSequence&) const;
+    TimecodeSnapType getSnapTypeForMaximumSnapLevelOf (double t, const TempoSequence&, bool isTripletsOverride) const;
 
     // get a snap type that rounds things to 1 beat
     static TimecodeSnapType get1BeatSnapType();
@@ -69,9 +69,9 @@ struct TimecodeSnapType
     int level = 0;
 
 private:
-    TimeDuration getIntervalNonBarsBeats() const;
-    TimePosition roundTime (TimePosition, const TempoSequence&, double adjustment) const;
-    TimePosition roundTime (TimePosition, const TempoSequence&, double adjustment, bool isTripletsOverride) const;
+    double getIntervalNonBarsBeats() const;
+    double roundTime (double t, const TempoSequence&, double adjustment) const;
+    double roundTime (double t, const TempoSequence&, double adjustment, bool isTripletsOverride) const;
 };
 
 /** Stores a duration in both beats and seconds */
@@ -79,20 +79,20 @@ class TimecodeDuration : public juce::ReferenceCountedObject
 {
 public:
     TimecodeDuration() = default;
-    static TimecodeDuration fromSeconds (Edit&, TimePosition start, TimePosition end);
-    static TimecodeDuration fromBeatsOnly (BeatDuration beats, int beatsPerBar);
-    static TimecodeDuration fromSecondsOnly (TimeDuration seconds);
+    static TimecodeDuration fromSeconds (Edit& e, double start, double end);
+    static TimecodeDuration fromBeatsOnly (double beats, int beatsPerBar);
+    static TimecodeDuration fromSecondsOnly (double seconds);
 
     bool operator== (const TimecodeDuration&) const;
     bool operator!= (const TimecodeDuration&) const;
 
-    std::optional<TimeDuration> seconds;
-    std::optional<BeatDuration> beats;
+    std::optional<double> seconds;
+    std::optional<double> beats;
 
     int beatsPerBar = 0;
 
 private:
-    TimecodeDuration (std::optional<TimeDuration> s, std::optional<BeatDuration> b, int bpb);
+    TimecodeDuration (std::optional<double> s, std::optional<double> b, int bpb);
 };
 
 //==============================================================================
@@ -122,7 +122,7 @@ struct TimecodeDisplayFormat
     // general description of how the rounding will be done - e.g. "Snap to nearest beat"
     juce::String getRoundingDescription() const;
 
-    juce::String getString (const TempoSequence&, TimePosition, bool isRelative) const;
+    juce::String getString (const TempoSequence&, double time, bool isRelative) const;
     juce::String getStartLabel() const;
 
     /** number of sections in the timecode string */
@@ -137,7 +137,7 @@ struct TimecodeDisplayFormat
                                     int part, int newValue, bool isRelative) const;
 
     //==============================================================================
-    TimecodeSnapType getBestSnapType (const TempoSetting&, TimeDuration onScreenTimePerPixel, bool isTripletOverride) const;
+    TimecodeSnapType getBestSnapType (const TempoSetting&, double onScreenTimePerPixel, bool isTripletOverride) const;
 
     int getNumSnapTypes() const;
     TimecodeSnapType getSnapType (int index) const;
@@ -150,7 +150,7 @@ struct TimecodeDisplayFormat
         if subSecondDivisor is 25 xxx will be 0 to 24 (for frames). If subSecondDivisor is 0, no
         sub-second portion will be produced.
     */
-    static juce::String toFullTimecode (TimePosition,
+    static juce::String toFullTimecode (double seconds,
                                         const int subSecondDivisions = 1000,
                                         bool showHours = false);
 };
@@ -162,12 +162,12 @@ struct TimecodeDisplayFormat
 */
 struct TimecodeDisplayIterator
 {
-    TimecodeDisplayIterator (const Edit&, TimePosition,
+    TimecodeDisplayIterator (const Edit&, double startTime,
                              TimecodeSnapType minSnapTypeToUse,
                              bool isTripletOverride);
 
     /** returns the next time. */
-    TimePosition next();
+    double next();
 
     juce::String getTimecodeAsString() const;
 
@@ -181,14 +181,14 @@ struct TimecodeDisplayIterator
 private:
     const TempoSequence& sequence;
     TimecodeSnapType minSnapType, currentSnapType;
-    TimePosition time;
+    double time;
     bool isTripletOverride;
 
     JUCE_DECLARE_NON_COPYABLE (TimecodeDisplayIterator)
 };
 
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine
 
 //==============================================================================
 
@@ -196,24 +196,24 @@ namespace juce
 {
 
 template<>
-struct VariantConverter<tracktion::engine::TimecodeDisplayFormat>
+struct VariantConverter<tracktion_engine::TimecodeDisplayFormat>
 {
-    static tracktion::engine::TimecodeDisplayFormat fromVar (const var& v)
+    static tracktion_engine::TimecodeDisplayFormat fromVar (const var& v)
     {
-        if (v == "beats") return tracktion::engine::TimecodeType::barsBeats;
-        if (v == "fps24") return tracktion::engine::TimecodeType::fps24;
-        if (v == "fps25") return tracktion::engine::TimecodeType::fps25;
-        if (v == "fps30") return tracktion::engine::TimecodeType::fps30;
+        if (v == "beats") return tracktion_engine::TimecodeType::barsBeats;
+        if (v == "fps24") return tracktion_engine::TimecodeType::fps24;
+        if (v == "fps25") return tracktion_engine::TimecodeType::fps25;
+        if (v == "fps30") return tracktion_engine::TimecodeType::fps30;
 
-        return tracktion::engine::TimecodeType::millisecs;
+        return tracktion_engine::TimecodeType::millisecs;
     }
 
-    static var toVar (tracktion::engine::TimecodeDisplayFormat t)
+    static var toVar (tracktion_engine::TimecodeDisplayFormat t)
     {
-        if (t.type == tracktion::engine::TimecodeType::barsBeats)  return "beats";
-        if (t.type == tracktion::engine::TimecodeType::fps24)  return "fps24";
-        if (t.type == tracktion::engine::TimecodeType::fps25)  return "fps25";
-        if (t.type == tracktion::engine::TimecodeType::fps30)  return "fps30";
+        if (t.type == tracktion_engine::TimecodeType::barsBeats)  return "beats";
+        if (t.type == tracktion_engine::TimecodeType::fps24)  return "fps24";
+        if (t.type == tracktion_engine::TimecodeType::fps25)  return "fps25";
+        if (t.type == tracktion_engine::TimecodeType::fps30)  return "fps30";
 
         return "seconds";
     }

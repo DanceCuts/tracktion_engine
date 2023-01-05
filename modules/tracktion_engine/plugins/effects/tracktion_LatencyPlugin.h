@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /** A test plugin that introduces latency to the incomming signal.
@@ -52,4 +52,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (LatencyPlugin)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

@@ -16,7 +16,7 @@ namespace moodycamel
     namespace details { class Semaphore; }
 }
 
-namespace tracktion { inline namespace graph
+namespace tracktion_graph
 {
 
 //==============================================================================
@@ -122,4 +122,4 @@ private:
 };
 
 
-}} // namespace tracktion_engine
+} // namespace tracktion_engine

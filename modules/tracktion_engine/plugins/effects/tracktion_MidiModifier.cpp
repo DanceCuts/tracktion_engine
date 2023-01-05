@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 MidiModifierPlugin::MidiModifierPlugin (PluginCreationInfo info) : Plugin (info)
@@ -66,4 +66,4 @@ void MidiModifierPlugin::restorePluginStateFromValueTree (const juce::ValueTree&
         p->updateFromAttachedValue();
 }
 
-}} // namespace tracktion { inline namespace engine
+}

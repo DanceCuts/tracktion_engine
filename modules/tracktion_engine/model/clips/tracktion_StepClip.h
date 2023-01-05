@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -88,11 +88,8 @@ public:
         int getNumNotes() const;
         void setNumNotes (int);
 
-        /** Returns the length of one step as a fraction of a beat. */
-        BeatDuration getNoteLength() const;
-
-        /** Sets the length of one step as a fraction of a beat. */
-        void setNoteLength (BeatDuration);
+        double getNoteLength() const; // e.g.: 16th note, calculated as 1.0 / 16.0
+        void setNoteLength (double);
 
         juce::Array<int> getVelocities (int channel) const;
         void setVelocities (int channel, const juce::Array<int>&);
@@ -212,7 +209,7 @@ public:
     juce::Array<Pattern> getPatterns();
 
     //==============================================================================
-    float getVolumeDb() const                       { return level->dbGain.get(); }
+    float getVolumeDb() const                       { return level->dbGain; }
     void setVolumeDb (float v)                      { level->dbGain = juce::jlimit (-100.0f, 0.0f, v); }
 
     //==============================================================================
@@ -223,14 +220,14 @@ public:
         @param[in] convertToSeconds Leave the timestamps in beats, or convert them to seconds while generating
         @param[in] instance         Specific pattern to generate, nullptr for the whole clip
     */
-    void generateMidiSequence (juce::MidiMessageSequence& result,
+    void generateMidiSequence (juce::MidiMessageSequence&,
                                bool convertToSeconds = true,
                                PatternInstance* instance = nullptr);
 
-    juce::Array<BeatPosition> getBeatTimesOfPatternStarts() const;
+    juce::Array<double> getBeatTimesOfPatternStarts() const;
 
-    BeatPosition getStartBeatOf (PatternInstance*);
-    BeatPosition getEndBeatOf (PatternInstance*);
+    double getStartBeatOf (PatternInstance*);
+    double getEndBeatOf (PatternInstance*);
 
     int getBeatsPerBar();
 
@@ -242,8 +239,16 @@ public:
     juce::Colour getDefaultColour() const override;
 
     bool isMidi() const override                        { return false; }
+    bool canLoop() const override                       { return false; }
+    bool isLooping() const override                     { return false; }
     bool beatBasedLooping() const override              { return true; }
-    bool isMuted() const override                       { return level->mute.get(); }
+    void setNumberOfLoops (int) override                {}
+    void disableLooping() override                      {}
+    double getLoopStartBeats() const override           { return 0.0; }
+    double getLoopStart() const override                { return 0.0; }
+    double getLoopLengthBeats() const override          { return 0.0; }
+    double getLoopLength() const override               { return 0.0; }
+    bool isMuted() const override                       { return level->mute; }
     void setMuted (bool m) override                     { level->mute = m; }
 
     LiveClipLevel getLiveClipLevel();
@@ -252,8 +257,8 @@ public:
 
 private:
     void generateMidiSequenceForChannels (juce::MidiMessageSequence&, bool convertToSeconds,
-                                          const Pattern&, BeatPosition startBeat,
-                                          BeatPosition clipStartBeat, BeatPosition clipEndBeat, const TempoSequence&);
+                                          const Pattern&, double startBeat,
+                                          double clipStartBeat, double clipEndBeat, const TempoSequence&);
 
     //==============================================================================
     struct ChannelList;
@@ -274,4 +279,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (StepClip)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

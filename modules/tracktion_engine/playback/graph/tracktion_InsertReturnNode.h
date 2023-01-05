@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -17,17 +17,17 @@ namespace tracktion { inline namespace engine
     The return node hooks into the input device and fills the insert's return
     buffer with data from the input.
 */
-class InsertReturnNode final    : public tracktion::graph::Node
+class InsertReturnNode final    : public tracktion_graph::Node
 {
 public:
-    InsertReturnNode (InsertPlugin&, std::unique_ptr<tracktion::graph::Node>);
+    InsertReturnNode (InsertPlugin&, std::unique_ptr<tracktion_graph::Node>);
 
     InsertPlugin& getInsert() const     { return owner; }
 
     //==============================================================================
-    tracktion::graph::NodeProperties getNodeProperties() override;
+    tracktion_graph::NodeProperties getNodeProperties() override;
     std::vector<Node*> getDirectInputNodes() override;
-    void prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo&) override;
+    void prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo&) override;
     bool isReadyToProcess() override;
     void process (ProcessContext&) override;
 
@@ -35,8 +35,8 @@ private:
     //==============================================================================
     InsertPlugin& owner;
     Plugin::Ptr plugin;
-    std::unique_ptr<tracktion::graph::Node> input;
+    std::unique_ptr<tracktion_graph::Node> input;
     MidiMessageArray midiScratch;
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

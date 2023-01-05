@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -27,10 +27,10 @@ bool referencesProjectItem (Edit&, ProjectItemID);
 //==============================================================================
 
 /** Inserts blank space in to an Edit, splitting clips if necessary. */
-void insertSpaceIntoEdit (Edit&, TimeRange timeRangeToInsert);
+void insertSpaceIntoEdit (Edit&, EditTimeRange timeRangeToInsert);
 
 /** Inserts a number of blank beats in to the Edit. */
-void insertSpaceIntoEditFromBeatRange (Edit&, BeatRange);
+void insertSpaceIntoEditFromBeatRange (Edit&, juce::Range<double> beatRange);
 
 //==============================================================================
 // Tracks
@@ -110,7 +110,7 @@ Clip::Ptr duplicateClip (const Clip&);
 void visitAllTrackItems (const Edit&, std::function<bool (TrackItem&)>);
 
 /** Returns the time range covered by the given items. */
-TimeRange getTimeRangeForSelectedItems (const SelectableList&);
+EditTimeRange getTimeRangeForSelectedItems (const SelectableList&);
 
 /** An enum to specify if gaps deleted should be closed or not. */
 enum class CloseGap
@@ -120,17 +120,17 @@ enum class CloseGap
 };
 
 /** Deletes a time range of an Edit, optionally closing the gap. */
-void deleteRegionOfTracks (Edit&, TimeRange rangeToDelete, bool onlySelectedTracks, CloseGap, SelectionManager*);
+void deleteRegionOfTracks (Edit&, EditTimeRange rangeToDelete, bool onlySelectedTracks, CloseGap, SelectionManager*);
 
 /** Deletes a time range of a Clip. */
-void deleteRegionOfClip (Clip&, TimeRange rangeToDelete);
+void deleteRegionOfClip (Clip&, EditTimeRange rangeToDelete);
 
 /** Deletes a time range of a Clip selection, optionally closing the gap. */
-void deleteRegionOfSelectedClips (SelectionManager&, TimeRange rangeToDelete,
+void deleteRegionOfSelectedClips (SelectionManager&, EditTimeRange rangeToDelete,
                                   CloseGap, bool moveAllSubsequentClipsOnTrack);
 
 /** Splits the clips at a given time. */
-SelectableList splitClips (const SelectableList& clips, TimePosition time);
+SelectableList splitClips (const SelectableList& clips, double time);
 
 /** Enum to dictate move clip behaviour. */
 enum class MoveClipAction
@@ -170,9 +170,6 @@ Plugin::Array getAllPlugins (const Edit&, bool includeMasterVolume);
 
 /** Returns the plugin with given state. */
 Plugin::Ptr findPluginForState (const Edit&, const juce::ValueTree&);
-
-/** Returns the plugin with given EditItemID. */
-Plugin::Ptr findPluginForID (const Edit&, EditItemID);
 
 /** Returns the track for the track which the plugin is located on. */
 Track* getTrackContainingPlugin (const Edit&, const Plugin*);
@@ -262,4 +259,4 @@ inline typename ModifierType::Ptr findModifierTypeForID (const Edit& edit, EditI
     return {};
 }
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

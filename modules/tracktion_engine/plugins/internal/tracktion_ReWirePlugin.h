@@ -10,7 +10,7 @@
 
 #if TRACKTION_ENABLE_REWIRE
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -84,7 +84,7 @@ public:
     void getChannelNames (juce::StringArray*, juce::StringArray*) override;
     int getNumOutputChannelsGivenInputs (int) override     { return 2; }
 
-    void prepareForNextBlock (TimePosition editTime) override;
+    void prepareForNextBlock (double editTime) override;
     void applyToBuffer (const PluginRenderContext&) override;
 
     juce::String getSelectableDescription() override    { return TRANS("ReWire Filter"); }
@@ -122,7 +122,7 @@ public:
     void setMidiChannel (int channel);
 
 private:
-    std::unique_ptr<tempo::Sequence::Position> currentTempoPosition;
+    std::unique_ptr<TempoSequencePosition> currentTempoPosition;
     int channelIndexL = 0, channelIndexR = 0;
     bool uiIsRunning = false;
 
@@ -133,6 +133,6 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (ReWirePlugin)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine
 
 #endif //TRACKTION_ENABLE_REWIRE

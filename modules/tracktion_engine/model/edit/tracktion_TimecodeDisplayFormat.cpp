@@ -8,10 +8,10 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
-TimecodeDuration::TimecodeDuration (std::optional<TimeDuration> s, std::optional<BeatDuration> b, int bpb)
+TimecodeDuration::TimecodeDuration (std::optional<double> s, std::optional<double> b, int bpb)
     : seconds (s), beats (b), beatsPerBar (bpb)
 {
 }
@@ -34,22 +34,22 @@ bool TimecodeDuration::operator== (const TimecodeDuration& o) const
 
 bool TimecodeDuration::operator!= (const TimecodeDuration& o) const
 {
-    return ! (*this == o);
+    return !(*this == o);
 }
 
-TimecodeDuration TimecodeDuration::fromSeconds (Edit& e, TimePosition start, TimePosition end)
+TimecodeDuration TimecodeDuration::fromSeconds (Edit& e, double start, double end)
 {
     return TimecodeDuration (end - start,
-                     e.tempoSequence.toBeats (end) - e.tempoSequence.toBeats (start),
+                     e.tempoSequence.timeToBeats (end) - e.tempoSequence.timeToBeats (start),
                      e.tempoSequence.getTimeSigAt (start).numerator);
 }
 
-TimecodeDuration TimecodeDuration::fromSecondsOnly (TimeDuration duration)
+TimecodeDuration TimecodeDuration::fromSecondsOnly (double duration)
 {
     return TimecodeDuration (duration, {}, {});
 }
 
-TimecodeDuration TimecodeDuration::fromBeatsOnly (BeatDuration duration, int beatsPerBar)
+TimecodeDuration TimecodeDuration::fromBeatsOnly (double duration, int beatsPerBar)
 {
     return TimecodeDuration ({}, duration, beatsPerBar);
 }
@@ -111,7 +111,7 @@ static const int subSecDivisionsForType[] = { 1000, Edit::ticksPerQuarterNote, 2
 static const int barMultiples[] = { 1, 2, 4, 8, 16, 64, 128, 256, 1024, 4096, 16384, 65536 };
 
 // maximum value we can add without shoving a time over into the next 'slot'
-static const TimeDuration nudge = TimeDuration::fromSeconds (0.05 / 96000.0);
+static const double nudge = 0.05 / 96000.0;
 
 
 //==============================================================================
@@ -147,16 +147,16 @@ juce::String TimecodeSnapType::getDescription (const TempoSetting& tempo, bool i
     return TRANS(getMinSecDivisions (level + 2).name);
 }
 
-TimeDuration TimecodeSnapType::getApproxIntervalTime (const TempoSetting& tempo) const
+double TimecodeSnapType::getApproxIntervalTime (const TempoSetting& tempo) const
 {
     return getApproxIntervalTime (tempo, false);
 }
 
-TimeDuration TimecodeSnapType::getApproxIntervalTime (const TempoSetting& tempo, bool isTripletsOverride) const
+double TimecodeSnapType::getApproxIntervalTime (const TempoSetting& tempo, bool isTripletsOverride) const
 {
     if (type == TimecodeType::barsBeats)
     {
-        const auto beatLen = tempo.getApproxBeatLength();
+        const double beatLen = tempo.getApproxBeatLength();
 
         if (level < 9)
         {
@@ -169,44 +169,44 @@ TimeDuration TimecodeSnapType::getApproxIntervalTime (const TempoSetting& tempo,
         if (level == 9)
             return beatLen;
 
-        auto barLength = beatLen * tempo.getMatchingTimeSig().numerator.get();
+        auto barLength = tempo.getMatchingTimeSig().numerator * beatLen;
 
-        return barLength * barMultiples[level - 10];
+        return barLength * barMultiples [level - 10];
     }
 
     return getIntervalNonBarsBeats();
 }
 
-TimeDuration TimecodeSnapType::getIntervalNonBarsBeats() const
+double TimecodeSnapType::getIntervalNonBarsBeats() const
 {
     if (type == TimecodeType::millisecs)
-        return TimeDuration::fromSeconds (getMinSecDivisions (level).time);
+        return getMinSecDivisions (level).time;
 
     jassert (type != TimecodeType::barsBeats);
 
     auto oneFrame = 1.0 / subSecDivisionsForType[static_cast<int> (type)];
 
     if (level == 0)
-        return TimeDuration::fromSeconds (oneFrame * 0.01);
+        return oneFrame * 0.01;
 
     if (level == 1)
-        return TimeDuration::fromSeconds (oneFrame);
+        return oneFrame;
 
-    return TimeDuration::fromSeconds (getMinSecDivisions (level + 2).time);
+    return getMinSecDivisions (level + 2).time;
 }
 
-juce::String TimecodeSnapType::getTimecodeString (TimePosition time, const TempoSequence& sequence, bool useStartLabelIfZero) const
+juce::String TimecodeSnapType::getTimecodeString (double time, const TempoSequence& sequence, bool useStartLabelIfZero) const
 {
     if (type == TimecodeType::barsBeats)
     {
-        if (time == TimePosition() && useStartLabelIfZero)
+        if (time == 0.0 && useStartLabelIfZero)
             return TRANS("Bar 1");
 
-        auto barsBeats = sequence.toBarsAndBeats (time + nudge);
+        auto barsBeats = sequence.timeToBarsBeats (time + nudge);
         auto bars = barsBeats.bars + 1;
         auto beats = barsBeats.getWholeBeats() + 1;
 
-        if (level < 9)  return juce::String::formatted ("%d|%d|%03d", bars, beats, (int) (barsBeats.getFractionalBeats().inBeats() * Edit::ticksPerQuarterNote));
+        if (level < 9)  return juce::String::formatted ("%d|%d|%03d", bars, beats, (int) (barsBeats.getFractionalBeats() * Edit::ticksPerQuarterNote));
         if (level == 9) return juce::String::formatted ("%d|%d", bars, beats);
 
         return TRANS("Bar") + " " + juce::String (bars);
@@ -214,11 +214,11 @@ juce::String TimecodeSnapType::getTimecodeString (TimePosition time, const Tempo
 
     if (type == TimecodeType::millisecs)
     {
-        if (time == TimePosition() && useStartLabelIfZero)
+        if (time == 0.0 && useStartLabelIfZero)
             return "0";
 
         if (level >= 9)
-            return juce::RelativeTime (time.inSeconds()).getDescription();
+            return juce::RelativeTime (time).getDescription();
 
         if (level >= 4)
             return TimecodeDisplayFormat::toFullTimecode (time, 0, false);
@@ -226,11 +226,11 @@ juce::String TimecodeSnapType::getTimecodeString (TimePosition time, const Tempo
         return TimecodeDisplayFormat::toFullTimecode (time, 1000, false);
     }
 
-    if (time == TimePosition() && useStartLabelIfZero)
+    if (time == 0.0 && useStartLabelIfZero)
         return "0";
 
     if (level >= 7)
-        return juce::RelativeTime (time.inSeconds()).getDescription();
+        return juce::RelativeTime (time).getDescription();
 
     if (level >= 2)
         return TimecodeDisplayFormat::toFullTimecode (time, 0, false);
@@ -243,46 +243,46 @@ int TimecodeSnapType::getOneBarLevel() const noexcept
     return type == TimecodeType::barsBeats ? 10 : (type == TimecodeType::millisecs ? 4 : 2);
 }
 
-TimePosition TimecodeSnapType::roundTimeDown (TimePosition t, const TempoSequence& sequence) const
+double TimecodeSnapType::roundTimeDown (double t, const TempoSequence& sequence) const
 {
     return roundTime (t, sequence, 0.0);
 }
 
-TimePosition TimecodeSnapType::roundTimeDown (TimePosition t, const TempoSequence& sequence, bool isTripletsOverride) const
+double TimecodeSnapType::roundTimeDown (double t, const TempoSequence& sequence, bool isTripletsOverride) const
 {
     return roundTime (t, sequence, 0.0, isTripletsOverride);
 }
 
-TimePosition TimecodeSnapType::roundTimeNearest (TimePosition t, const TempoSequence& sequence) const
+double TimecodeSnapType::roundTimeNearest (double t, const TempoSequence& sequence) const
 {
     return roundTime (t, sequence, 0.5 - 1.0e-10);
 }
 
-TimePosition TimecodeSnapType::roundTimeNearest (TimePosition t, const TempoSequence& sequence, bool isTripletsOverride) const
+double TimecodeSnapType::roundTimeNearest (double t, const TempoSequence& sequence, bool isTripletsOverride) const
 {
     return roundTime (t, sequence, 0.5 - 1.0e-10, isTripletsOverride);
 }
 
-TimePosition TimecodeSnapType::roundTimeUp (TimePosition t, const TempoSequence& sequence) const
+double TimecodeSnapType::roundTimeUp (double t, const TempoSequence& sequence) const
 {
     return roundTime (t, sequence, 1.0 - 1.0e-10);
 }
 
-TimePosition TimecodeSnapType::roundTimeUp (TimePosition t, const TempoSequence& sequence, bool isTripletsOverride) const
+double TimecodeSnapType::roundTimeUp (double t, const TempoSequence& sequence, bool isTripletsOverride) const
 {
     return roundTime (t, sequence, 1.0 - 1.0e-10, isTripletsOverride);
 }
 
-TimePosition TimecodeSnapType::roundTime (TimePosition t, const TempoSequence& sequence, double adjustment) const
+double TimecodeSnapType::roundTime (double t, const TempoSequence& sequence, double adjustment) const
 {
     return roundTime (t, sequence, adjustment, sequence.isTripletsAtTime (t));
 }
 
-TimePosition TimecodeSnapType::roundTime (TimePosition t, const TempoSequence& sequence, double adjustment, bool tripletsOverride) const
+double TimecodeSnapType::roundTime (double t, const TempoSequence& sequence, double adjustment, bool tripletsOverride) const
 {
     if (type == TimecodeType::barsBeats)
     {
-        auto barsBeats = sequence.toBarsAndBeats (t);
+        auto barsBeats = sequence.timeToBarsBeats (t);
         auto& tempo = sequence.getTempoAt (t);
 
         if (level < 9)
@@ -290,34 +290,34 @@ TimePosition TimecodeSnapType::roundTime (TimePosition t, const TempoSequence& s
             auto q = tripletsOverride ? subBeatFractionsTriplets[level].time
                                       : subBeatFractions[level].time;
 
-            barsBeats.beats = BeatDuration::fromBeats (q * std::floor (barsBeats.beats.inBeats() / q + adjustment));
+            barsBeats.beats = q * std::floor (barsBeats.beats / q + adjustment);
         }
         else if (level == 9)
         {
-            barsBeats.beats = BeatDuration::fromBeats (std::floor (barsBeats.beats.inBeats() + adjustment));
+            barsBeats.beats = std::floor (barsBeats.beats + adjustment);
         }
         else
         {
-            auto barsPlusBeats = barsBeats.bars + barsBeats.beats.inBeats() / tempo.getMatchingTimeSig().numerator;
+            auto barsPlusBeats = barsBeats.bars + barsBeats.beats / tempo.getMatchingTimeSig().numerator;
             auto q = barMultiples[level - 10];
 
             barsBeats.bars = q * (int) std::floor (barsPlusBeats / q + adjustment);
-            barsBeats.beats = {};
+            barsBeats.beats = 0;
         }
 
-        return sequence.toTime (barsBeats);
+        return sequence.barsBeatsToTime (barsBeats);
     }
 
     auto q = getIntervalNonBarsBeats();
-    return toPosition (q * std::floor ((t / q) + adjustment));
+    return q * std::floor ((t / q) + adjustment);
 }
 
-TimecodeSnapType TimecodeSnapType::getSnapTypeForMaximumSnapLevelOf (TimePosition t, const TempoSequence& sequence) const
+TimecodeSnapType TimecodeSnapType::getSnapTypeForMaximumSnapLevelOf (double t, const TempoSequence& sequence) const
 {
     return getSnapTypeForMaximumSnapLevelOf (t, sequence, sequence.isTripletsAtTime (t));
 }
 
-TimecodeSnapType TimecodeSnapType::getSnapTypeForMaximumSnapLevelOf (TimePosition t, const TempoSequence& sequence, bool isTripletsOverride) const
+TimecodeSnapType TimecodeSnapType::getSnapTypeForMaximumSnapLevelOf (double t, const TempoSequence& sequence, bool isTripletsOverride) const
 {
     const TimecodeDisplayFormat format (type);
     auto numTypes = format.getNumSnapTypes();
@@ -327,7 +327,7 @@ TimecodeSnapType TimecodeSnapType::getSnapTypeForMaximumSnapLevelOf (TimePositio
     {
         TimecodeSnapType snap (type, i);
 
-        if (std::abs ((t - snap.roundTimeNearest (t, sequence, isTripletsOverride)).inSeconds()) > 1.0e-6)
+        if (std::abs (t - snap.roundTimeNearest (t, sequence, isTripletsOverride)) > 1.0e-6)
         {
             --i;
             break;
@@ -382,38 +382,38 @@ int TimecodeDisplayFormat::getSubSecondDivisions() const
     return subSecDivisionsForType[static_cast<int> (type)];
 }
 
-juce::String TimecodeDisplayFormat::getString (const TempoSequence& tempo, const TimePosition time, bool isRelative) const
+juce::String TimecodeDisplayFormat::getString (const TempoSequence& tempo, const double time, bool isRelative) const
 {
     if (type == TimecodeType::barsBeats)
     {
-        tempo::BarsAndBeats barsBeats;
+        TempoSequence::BarsAndBeats barsBeats;
         int bars, beats;
-        BeatDuration fraction;
+        double fraction;
 
         if (! isRelative)
         {
-            barsBeats = tempo.toBarsAndBeats (time + nudge);
+            barsBeats = tempo.timeToBarsBeats (time + nudge);
             bars = barsBeats.bars + 1;
             beats = barsBeats.getWholeBeats() + 1;
             fraction = barsBeats.getFractionalBeats();
         }
-        else if (time < 0s)
+        else if (time < 0)
         {
-            barsBeats = tempo.toBarsAndBeats (time - nudge);
+            barsBeats = tempo.timeToBarsBeats (time - nudge);
             bars = -barsBeats.bars - 1;
             beats = (tempo.getTimeSig(0)->numerator - 1) - barsBeats.getWholeBeats();
-            fraction = BeatDuration::fromBeats (1.0) - barsBeats.getFractionalBeats();
+            fraction = 1.0 - barsBeats.getFractionalBeats();
         }
         else
         {
-            barsBeats = tempo.toBarsAndBeats (time + nudge);
+            barsBeats = tempo.timeToBarsBeats (time + nudge);
             bars = barsBeats.bars + 1;
             beats = barsBeats.getWholeBeats() + 1;
             fraction = barsBeats.getFractionalBeats();
         }
 
-        auto s = juce::String::formatted ("%d|%d|%03d", bars, beats, (int) (fraction.inBeats() * Edit::ticksPerQuarterNote));
-        return time < 0s ? ("-" + s) : s;
+        auto s = juce::String::formatted ("%d|%d|%03d", bars, beats, (int) (fraction * Edit::ticksPerQuarterNote));
+        return time < 0 ? ("-" + s) : s;
     }
 
     return TimecodeDisplayFormat::toFullTimecode (time, getSubSecondDivisions());
@@ -459,7 +459,7 @@ int TimecodeDisplayFormat::getMaxValueOfPart (const TempoSequence& sequence, Tim
         if (currentTime.beatsPerBar != 0.0)
             return currentTime.beatsPerBar - (isRelative ? 1 : 0);
 
-        return sequence.getTimeSigAt (toPosition (*currentTime.seconds)).numerator - (isRelative ? 1 : 0);
+        return sequence.getTimeSigAt (*currentTime.seconds).numerator - (isRelative ? 1 : 0);
     }
 
     const short m[5][4] = { { 999, 59, 59,  48 },
@@ -491,30 +491,29 @@ void TimecodeDisplayFormat::getPartStrings (TimecodeDuration duration,
 {
     if (type == TimecodeType::barsBeats)
     {
-        tempo::BarsAndBeats barsBeats;
+        TempoSequence::BarsAndBeats barsBeats;
 
         if (duration.beats.has_value())
         {
-            auto t = (*duration.beats).inBeats() + nudge.inSeconds();
+            auto t = *duration.beats + nudge;
 
             barsBeats.bars  = int (t / duration.beatsPerBar);
-            barsBeats.beats = BeatDuration::fromBeats (t - (barsBeats.bars * duration.beatsPerBar));
+            barsBeats.beats = t - (barsBeats.bars * duration.beatsPerBar);
         }
         else if (duration.seconds.has_value())
         {
             auto time = *duration.seconds;
-
-            if (time < 0s)
+            if (time < 0)
             {
                 time = -time;
                 results[2] = "-";
             }
 
-            barsBeats = tempo.toBarsAndBeats (toPosition (time + nudge));
+            barsBeats = tempo.timeToBarsBeats (time + nudge);
         }
 
         {
-            auto val = (int) (barsBeats.getFractionalBeats().inBeats() * Edit::ticksPerQuarterNote);
+            auto val = (int) (barsBeats.getFractionalBeats() * Edit::ticksPerQuarterNote);
 
             char text[4];
             text[0] = (char) ('0' + (val / 100) % 10);
@@ -536,7 +535,7 @@ void TimecodeDisplayFormat::getPartStrings (TimecodeDuration duration,
     }
     else if (duration.seconds.has_value())
     {
-        auto t = (tracktion::abs (*duration.seconds) + nudge).inSeconds();
+        auto t = std::abs (*duration.seconds) + nudge;
 
         if (type == TimecodeType::millisecs)
         {
@@ -563,7 +562,7 @@ void TimecodeDisplayFormat::getPartStrings (TimecodeDuration duration,
             results[0] = twoCharString (((int) (t * 30)) % 30);
         }
 
-        if (*duration.seconds < 0s)
+        if (*duration.seconds < 0)
             results[3] = "-";
 
         auto hours = (int) (t * (1.0 / 3600.0));
@@ -588,7 +587,7 @@ TimecodeDuration TimecodeDisplayFormat::getNewTimeWithPartValue (TimecodeDuratio
     {
         if (time.beats.has_value())
         {
-            auto t = (*time.beats).inBeats();
+            auto t = *time.beats;
 
             auto bars  = int (t / time.beatsPerBar);
             auto beats = t - (bars * time.beatsPerBar);
@@ -599,26 +598,26 @@ TimecodeDuration TimecodeDisplayFormat::getNewTimeWithPartValue (TimecodeDuratio
             else if (part == 1) beats = newValue;
             else if (part == 0) ticks = newValue / double (Edit::ticksPerQuarterNote);
 
-            return TimecodeDuration::fromBeatsOnly (BeatDuration::fromBeats (bars * time.beatsPerBar + beats + ticks), time.beatsPerBar);
+            return TimecodeDuration::fromBeatsOnly (bars * time.beatsPerBar + beats + ticks, time.beatsPerBar);
         }
         else
         {
-            auto t = toPosition (tracktion::abs (*time.seconds));
+            auto t = std::abs (*time.seconds);
 
-            auto pos = createPosition (tempo);
-            pos.set (t);
+            TempoSequencePosition pos (tempo);
+            pos.setTime (t);
 
-            auto barsBeats = tempo.toBarsAndBeats (t);
+            auto barsBeats = tempo.timeToBarsBeats (t);
 
-            if (part == 0)       pos.add (BeatDuration::fromBeats (newValue / (double) Edit::ticksPerQuarterNote) - barsBeats.getFractionalBeats());
-            else if (part == 1)  pos.add (BeatDuration::fromBeats ((isRelative ? newValue : (newValue - 1)) - barsBeats.getWholeBeats()));
+            if (part == 0)       pos.addBeats ((newValue / (double) Edit::ticksPerQuarterNote) - barsBeats.getFractionalBeats());
+            else if (part == 1)  pos.addBeats ((isRelative ? newValue : (newValue - 1)) - barsBeats.getWholeBeats());
             else if (part == 2)  pos.addBars  ((isRelative ? newValue : (newValue - 1)) - barsBeats.bars);
 
-            return TimecodeDuration::fromSecondsOnly (toDuration (*time.seconds < 0s ? -pos.getTime() : pos.getTime()));
+            return TimecodeDuration::fromSecondsOnly (*time.seconds < 0 ? -pos.getTime() : pos.getTime());
         }
     }
 
-    auto t = tracktion::abs (*time.seconds).inSeconds();
+    auto t = std::abs (*time.seconds);
     auto intT = (int) t;
     auto hours = (int) (t / 3600.0);
     auto mins  = (intT / 60) % 60;
@@ -645,14 +644,14 @@ TimecodeDuration TimecodeDisplayFormat::getNewTimeWithPartValue (TimecodeDuratio
 
     t = hours * 3600.0 + mins * 60.0 + secs + frac;
 
-    return TimecodeDuration::fromSecondsOnly (TimeDuration::fromSeconds (*time.seconds < 0s ? -t : t));
+    return TimecodeDuration::fromSecondsOnly (*time.seconds < 0 ? -t : t);
 }
 
 //==============================================================================
-juce::String TimecodeDisplayFormat::toFullTimecode (TimePosition seconds, int subSecondDivisions, bool showHours)
+juce::String TimecodeDisplayFormat::toFullTimecode (double seconds, int subSecondDivisions, bool showHours)
 {
-    juce::String result = (seconds < 0s) ? "-" : "";
-    auto absSecs = tracktion::abs (seconds).inSeconds();
+    juce::String result = (seconds < 0) ? "-" : "";
+    auto absSecs = std::abs (seconds);
 
     if (showHours || (absSecs >= 60.0 * 60.0))
         result += juce::String::formatted ("%02d:%02d:%02d",
@@ -674,10 +673,10 @@ juce::String TimecodeDisplayFormat::toFullTimecode (TimePosition seconds, int su
 
 //==============================================================================
 TimecodeSnapType TimecodeDisplayFormat::getBestSnapType (const TempoSetting& tempo,
-                                                         TimeDuration onScreenTimePerPixel,
+                                                         double onScreenTimePerPixel,
                                                          bool isTripletOverride) const
 {
-    if (type >= TimecodeType::fps24 && (1.0 / getSubSecondDivisions()) / onScreenTimePerPixel.inSeconds() > 2)
+    if (type >= TimecodeType::fps24 && (1.0 / getSubSecondDivisions()) / onScreenTimePerPixel > 2)
         return TimecodeSnapType (type, 1);
 
     auto numSnapTypes = getNumSnapTypes();
@@ -686,9 +685,9 @@ TimecodeSnapType TimecodeDisplayFormat::getBestSnapType (const TempoSetting& tem
     {
         TimecodeSnapType snap (type, i);
         auto res = snap.getApproxIntervalTime (tempo, isTripletOverride);
-        auto t = res / onScreenTimePerPixel.inSeconds();
+        auto t = res / onScreenTimePerPixel;
 
-        if (t > 12s)
+        if (t > 12)
             return snap;
     }
 
@@ -707,7 +706,7 @@ TimecodeSnapType TimecodeDisplayFormat::getSnapType (int index) const
 }
 
 //==============================================================================
-TimecodeDisplayIterator::TimecodeDisplayIterator (const Edit& edit, TimePosition startTime,
+TimecodeDisplayIterator::TimecodeDisplayIterator (const Edit& edit, double startTime,
                                                   TimecodeSnapType minSnapTypeToUse, bool to)
     : sequence (edit.tempoSequence),
       minSnapType (minSnapTypeToUse),
@@ -716,10 +715,10 @@ TimecodeDisplayIterator::TimecodeDisplayIterator (const Edit& edit, TimePosition
 {
 }
 
-TimePosition TimecodeDisplayIterator::next()
+double TimecodeDisplayIterator::next()
 {
     bool triplets = isTripletOverride || sequence.isTripletsAtTime (time);
-    auto nextTime = std::max (0_tp, minSnapType.roundTimeUp (time + 1.0e-5s, sequence, triplets));
+    auto nextTime = std::max (0.0, minSnapType.roundTimeUp (time + 1.0e-5, sequence, triplets));
 
     if (nextTime <= time)
     {
@@ -742,4 +741,4 @@ bool TimecodeDisplayIterator::isOneBarOrGreater() const noexcept
     return currentSnapType.getLevel() >= currentSnapType.getOneBarLevel();
 }
 
-}} // namespace tracktion { inline namespace engine
+}

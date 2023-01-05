@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 // JUCE Changed the format of PluginDescription::createIdentifierString
@@ -35,8 +35,6 @@ public:
     //==============================================================================
     void initialiseFully() override;
     void forceFullReinitialise();
-
-    juce::String getLoadError();
 
     static const char* xmlTypeName;
 
@@ -77,7 +75,6 @@ public:
     bool noTail() override;
     double getTailLength() const override;
     bool needsConstantBufferSize() override { return false; }
-    void trackPropertiesChanged() override;
 
     juce::AudioProcessor* getWrappedAudioProcessor() const override     { return pluginInstance.get(); }
     void deleteFromParent() override;
@@ -128,7 +125,7 @@ public:
 private:
     //==============================================================================
     juce::CriticalSection lock;
-    juce::String debugName, identiferString, loadError;
+    juce::String debugName, identiferString;
 
     struct ProcessorChangedManager;
     std::unique_ptr<juce::AudioPluginInstance> pluginInstance;
@@ -199,4 +196,4 @@ struct PluginWetDryAutomatableParam  : public AutomatableParameter
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PluginWetDryAutomatableParam)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

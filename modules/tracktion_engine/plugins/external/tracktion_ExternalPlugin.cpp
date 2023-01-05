@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 static juce::String getDeprecatedPluginDescSuffix (const juce::PluginDescription& d)
@@ -237,7 +237,7 @@ struct ExtraVSTCallbacks  : public juce::VSTPluginFormat::ExtraFunctions
     juce::int64 getTempoAt (juce::int64 samplePos) override
     {
         auto sampleRate = edit.engine.getDeviceManager().getSampleRate();
-        return (juce::int64) (10000.0 * edit.tempoSequence.getTempoAt (TimePosition::fromSamples (samplePos, sampleRate)).getBpm());
+        return (juce::int64) (10000.0 * edit.tempoSequence.getTempoAt (samplePos / sampleRate).getBpm());
     }
 
     // returns 0: not supported, 1: off, 2:read, 3:write, 4:read/write
@@ -265,6 +265,9 @@ public:
     PluginPlayHead (ExternalPlugin& p)
         : plugin (p)
     {
+        currentPos = std::make_unique<TempoSequencePosition> (plugin.edit.tempoSequence);
+        loopStart  = std::make_unique<TempoSequencePosition> (plugin.edit.tempoSequence);
+        loopEnd    = std::make_unique<TempoSequencePosition> (plugin.edit.tempoSequence);
     }
 
     /** @warning Because some idiotic plugins call getCurrentPosition on the message thread, we can't keep a
@@ -275,58 +278,58 @@ public:
     {
         if (rc != nullptr)
         {
-            time        = rc->editTime.getStart();
+            time        = rc->editTime;
             isPlaying   = rc->isPlaying;
-
-            const auto loopTimeRange = plugin.edit.getTransport().getLoopRange();
-            loopStart.set (loopTimeRange.getStart());
-            loopEnd.set (loopTimeRange.getEnd());
-            currentPos.set (time);
         }
         else
         {
-            time        = TimePosition();
+            time        = 0.0;
             isPlaying   = false;
         }
     }
 
     juce::Optional<PositionInfo> getPosition() const override
     {
-        PositionInfo result;
+        PositionInfo result {};
+        result.setFrameRate(getFrameRate());
 
-        result.setFrameRate (getFrameRate());
+        if (currentPos == nullptr)
+            return {};
 
         auto& transport = plugin.edit.getTransport();
-        auto localTime = time.load();
+        double localTime = time;
 
-        result.setIsPlaying (isPlaying);
-        result.setIsRecording (transport.isRecording());
-        result.setEditOriginTime (transport.getTimeWhenStarted().inSeconds());
-        result.setIsLooping (transport.looping);
+        result.setIsPlaying(isPlaying);
+        result.setIsRecording(transport.isRecording());
+        result.setEditOriginTime(transport.getTimeWhenStarted());
+        result.setIsLooping(transport.looping);
 
-        if (transport.looping)
-            result.setLoopPoints (juce::AudioPlayHead::LoopPoints ({ loopStart.getPPQTime(), loopEnd.getPPQTime() }));
+        if (result.getIsLooping())
+        {
+            const auto loopTimes = transport.getLoopRange();
+            loopStart->setTime(loopTimes.start);
+            loopEnd->setTime(loopTimes.end);
+            result.setLoopPoints(LoopPoints{ loopStart->getPPQTime(), loopEnd->getPPQTime() });
+        }
 
-        result.setTimeInSeconds (localTime.inSeconds());
-        result.setTimeInSamples (toSamples (localTime, plugin.sampleRate));
+        result.setTimeInSeconds(localTime);
+        result.setTimeInSamples((int64_t)(localTime * plugin.sampleRate));
 
-        const auto timeSig = currentPos.getTimeSignature();
-        result.setBpm (currentPos.getTempo());
-        result.setTimeSignature (juce::AudioPlayHead::TimeSignature ({ timeSig.numerator, timeSig.denominator }));
+        currentPos->setTime(localTime);
+        auto& tempo = currentPos->getCurrentTempo();
+        result.setBpm(tempo.bpm);
+        result.setTimeSignature(TimeSignature{ tempo.numerator, tempo.denominator });
 
-        const auto ppqPositionOfLastBarStart = currentPos.getPPQTimeOfBarStart();
-        result.setPpqPositionOfLastBarStart (ppqPositionOfLastBarStart);
-        result.setPpqPosition (std::max (ppqPositionOfLastBarStart, currentPos.getPPQTime()));
+        result.setPpqPositionOfLastBarStart(currentPos->getPPQTimeOfBarStart());
+        result.setPpqPosition(std::max(result.getPpqPositionOfLastBarStart().orFallback(0), currentPos->getPPQTime()));
 
         return result;
     }
 
 private:
     ExternalPlugin& plugin;
-    tempo::Sequence::Position currentPos { createPosition (plugin.edit.tempoSequence) };
-    tempo::Sequence::Position loopStart { createPosition (plugin.edit.tempoSequence) };
-    tempo::Sequence::Position loopEnd { createPosition (plugin.edit.tempoSequence) };
-    std::atomic<TimePosition> time { TimePosition() };
+    std::unique_ptr<TempoSequencePosition> currentPos, loopStart, loopEnd;
+    std::atomic<double> time { 0 };
     std::atomic<bool> isPlaying { false };
 
     AudioPlayHead::FrameRateType getFrameRate() const
@@ -554,17 +557,6 @@ juce::ValueTree ExternalPlugin::create (Engine& e, const juce::PluginDescription
         v.setProperty (IDs::windowLocked, true, nullptr);
 
     return v;
-}
-
-juce::String ExternalPlugin::getLoadError()
-{
-    if (pluginInstance != nullptr)
-        return {};
-
-    if (loadError.isEmpty())
-        return TRANS("ERROR! - This plugin couldn't be loaded!");
-
-    return loadError;
 }
 
 const char* ExternalPlugin::xmlTypeName = "vst";
@@ -829,12 +821,12 @@ void ExternalPlugin::doFullInitialisation()
                 return;
 
             CRASH_TRACER_PLUGIN (getDebugName());
-            loadError = {};
+            juce::String error;
 
-            callBlocking ([this, &foundDesc]
+            callBlocking ([this, &error, &foundDesc]
             {
                 CRASH_TRACER_PLUGIN (getDebugName());
-                loadError = createPluginInstance (*foundDesc);
+                error = createPluginInstance (*foundDesc);
             });
 
             if (pluginInstance != nullptr)
@@ -853,27 +845,10 @@ void ExternalPlugin::doFullInitialisation()
             }
             else
             {
-                TRACKTION_LOG_ERROR (loadError);
+                TRACKTION_LOG_ERROR (error);
             }
         }
     }
-}
-
-void ExternalPlugin::trackPropertiesChanged()
-{
-    juce::MessageManager::callAsync ([this, pluginRef = getWeakRef()]
-    {
-        if (pluginRef == nullptr)
-            return;
-
-        if (auto t = getOwnerTrack(); t != nullptr && pluginInstance != nullptr)
-        {
-            auto n = t->getName();
-            auto c = t->getColour();
-
-            pluginInstance->updateTrackProperties ({n, c});
-        }
-    });
 }
 
 //==============================================================================
@@ -1850,4 +1825,4 @@ float PluginWetDryAutomatableParam::stringToValue (const juce::String& s)
     return juce::Decibels::decibelsToGain (dbStringToDb (s));
 }
 
-}} // namespace tracktion { inline namespace engine
+}

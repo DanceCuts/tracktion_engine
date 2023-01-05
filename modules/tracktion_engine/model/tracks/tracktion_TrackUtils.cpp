@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 TrackInsertPoint::TrackInsertPoint (Track* parent, Track* preceding)
@@ -285,7 +285,7 @@ bool TrackAutomationSection::overlaps (const TrackAutomationSection& other) cons
 {
     return src == other.src
         && dst == other.dst
-        && position.expanded (TimeDuration::fromSeconds (0.0001)).overlaps (other.position);
+        && position.expanded (0.0001).overlaps (other.position);
 }
 
 
@@ -331,7 +331,7 @@ static void mergeSections (const juce::Array<TrackAutomationSection>& src,
             dst.add (srcSeg);
 }
 
-void moveAutomation (const juce::Array<TrackAutomationSection>& origSections, TimeDuration offset, bool copy)
+void moveAutomation (const juce::Array<TrackAutomationSection>& origSections, double offset, bool copy)
 {
     if (origSections.isEmpty())
         return;
@@ -373,35 +373,34 @@ void moveAutomation (const juce::Array<TrackAutomationSection>& origSections, Ti
             {
                 auto param = activeParam.param;
                 auto& curve = param->getCurve();
-                constexpr auto tolerance = TimeDuration::fromSeconds (0.0001);
 
-                auto startValue = curve.getValueAt (sectionTime.getStart() - tolerance);
-                auto endValue   = curve.getValueAt (sectionTime.getEnd()   + tolerance);
+                auto startValue = curve.getValueAt (sectionTime.start - 0.0001);
+                auto endValue   = curve.getValueAt (sectionTime.end   + 0.0001);
 
-                auto idx = curve.indexBefore (sectionTime.getEnd() + tolerance);
+                auto idx = curve.indexBefore (sectionTime.end + 0.0001);
                 auto endCurve = (idx == -1) ? 0.0f : curve.getPointCurve(idx);
 
-                curve.removePointsInRegion (sectionTime.expanded (tolerance));
+                curve.removePointsInRegion (sectionTime.expanded (0.0001));
 
                 if (std::abs (startValue - endValue) < 0.0001f)
                 {
-                    curve.addPoint (sectionTime.getStart(), startValue, 0.0f);
-                    curve.addPoint (sectionTime.getEnd(), endValue, endCurve);
+                    curve.addPoint (sectionTime.start, startValue, 0.0f);
+                    curve.addPoint (sectionTime.end, endValue, endCurve);
                 }
                 else if (startValue > endValue)
                 {
-                    curve.addPoint (sectionTime.getStart(), startValue, 0.0f);
-                    curve.addPoint (sectionTime.getStart(), endValue, 0.0f);
-                    curve.addPoint (sectionTime.getEnd(), endValue, endCurve);
+                    curve.addPoint (sectionTime.start, startValue, 0.0f);
+                    curve.addPoint (sectionTime.start, endValue, 0.0f);
+                    curve.addPoint (sectionTime.end, endValue, endCurve);
                 }
                 else
                 {
-                    curve.addPoint (sectionTime.getStart(), startValue, 0.0f);
-                    curve.addPoint (sectionTime.getEnd(), startValue, 0.0f);
-                    curve.addPoint (sectionTime.getEnd(), endValue, endCurve);
+                    curve.addPoint (sectionTime.start, startValue, 0.0f);
+                    curve.addPoint (sectionTime.end, startValue, 0.0f);
+                    curve.addPoint (sectionTime.end, endValue, endCurve);
                 }
 
-                curve.removeRedundantPoints (sectionTime.expanded (tolerance));
+                curve.removeRedundantPoints (sectionTime.expanded (0.0001));
             }
         }
     }
@@ -416,10 +415,10 @@ void moveAutomation (const juce::Array<TrackAutomationSection>& origSections, Ti
             if (auto dstCurve = (section.src == section.dst) ? &activeParam.param->getCurve()
                                                              : getDestCurve (*section.dst, activeParam.param))
             {
-                constexpr auto errorMargin = TimeDuration::fromSeconds (0.0001);
+                constexpr double errorMargin = 0.0001;
 
-                auto start    = sectionTime.getStart();
-                auto end      = sectionTime.getEnd();
+                auto start    = sectionTime.start;
+                auto end      = sectionTime.end;
                 auto newStart = start + offset;
                 auto newEnd   = end   + offset;
 
@@ -437,9 +436,9 @@ void moveAutomation (const juce::Array<TrackAutomationSection>& origSections, Ti
                 auto dstStartVal = dstCurve->getValueAt (newStart - errorMargin);
                 auto dstEndVal   = dstCurve->getValueAt (newEnd   + errorMargin);
 
-                TimeRange totalRegionWithMargin  (newStart - errorMargin, newEnd   + errorMargin);
-                TimeRange startWithMargin        (newStart - errorMargin, newStart + errorMargin);
-                TimeRange endWithMargin          (newEnd   - errorMargin, newEnd   + errorMargin);
+                EditTimeRange totalRegionWithMargin  (newStart - errorMargin, newEnd   + errorMargin);
+                EditTimeRange startWithMargin        (newStart - errorMargin, newStart + errorMargin);
+                EditTimeRange endWithMargin          (newEnd   - errorMargin, newEnd   + errorMargin);
 
                 juce::Array<AutomationCurve::AutomationPoint> origPoints;
 
@@ -447,7 +446,7 @@ void moveAutomation (const juce::Array<TrackAutomationSection>& origSections, Ti
                 {
                     auto pt = srcCurve.getPoint (i);
 
-                    if (pt.time >= start - errorMargin && pt.time <= sectionTime.getEnd() + errorMargin)
+                    if (pt.time >= start - errorMargin && pt.time <= sectionTime.end + errorMargin)
                         origPoints.add (pt);
                 }
 
@@ -510,4 +509,4 @@ void moveAutomation (const juce::Array<TrackAutomationSection>& origSections, Ti
     }
 }
 
-}} // namespace tracktion { inline namespace engine
+}

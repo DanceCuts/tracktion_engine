@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 juce::File getEditFileFromProjectManager (Edit& edit)
@@ -31,7 +31,7 @@ bool referencesProjectItem (Edit& edit, ProjectItemID itemID)
 
 //==============================================================================
 //==============================================================================
-void insertSpaceIntoEdit (Edit& edit, TimeRange timeRange)
+void insertSpaceIntoEdit (Edit& edit, EditTimeRange timeRange)
 {
     const bool doTempoTrackFirst = ! edit.getTimecodeFormat().isBarsBeats();
     const auto time = timeRange.getStart();
@@ -50,14 +50,14 @@ void insertSpaceIntoEdit (Edit& edit, TimeRange timeRange)
         edit.getTempoTrack()->insertSpaceIntoTrack (time, length);
 }
 
-void insertSpaceIntoEditFromBeatRange (Edit& edit, BeatRange beatRange)
+void insertSpaceIntoEditFromBeatRange (Edit& edit, juce::Range<double> beatRange)
 {
     auto& ts = edit.tempoSequence;
-    const auto timeToInsertAt = ts.toTime (beatRange.getStart());
-    auto& tempoAtInsertionPoint = ts.getTempoAt (timeToInsertAt - TimeDuration::fromSeconds (0.0001));
+    const double timeToInsertAt = ts.beatsToTime (beatRange.getStart());
+    auto& tempoAtInsertionPoint = ts.getTempoAt (timeToInsertAt - 0.0001);
 
-    const auto lengthInTimeToInsert = TimeDuration::fromSeconds (beatRange.getLength().inBeats() * tempoAtInsertionPoint.getApproxBeatLength().inSeconds());
-    insertSpaceIntoEdit (edit, TimeRange (timeToInsertAt, lengthInTimeToInsert));
+    const double lengthInTimeToInsert = beatRange.getLength() * tempoAtInsertionPoint.getApproxBeatLength();
+    insertSpaceIntoEdit (edit, EditTimeRange::withStartAndLength (timeToInsertAt, lengthInTimeToInsert));
 }
 
 //==============================================================================
@@ -233,7 +233,7 @@ Clip::Ptr duplicateClip (const Clip& c)
     return {};
 }
 
-SelectableList splitClips (const SelectableList& clips, TimePosition time)
+SelectableList splitClips (const SelectableList& clips, double time)
 {
     SelectableList newClips;
 
@@ -246,7 +246,7 @@ SelectableList splitClips (const SelectableList& clips, TimePosition time)
     return newClips;
 }
 
-void deleteRegionOfClip (Clip& c, TimeRange timeRangeToDelete)
+void deleteRegionOfClip (Clip& c, EditTimeRange timeRangeToDelete)
 {
     CRASH_TRACER
 
@@ -276,7 +276,7 @@ void deleteRegionOfClip (Clip& c, TimeRange timeRangeToDelete)
     }
 }
 
-void deleteRegionOfSelectedClips (SelectionManager& selectionManager, TimeRange rangeToDelete,
+void deleteRegionOfSelectedClips (SelectionManager& selectionManager, EditTimeRange rangeToDelete,
                                   CloseGap closeGap, bool moveAllSubsequentClipsOnTrack)
 {
     Clip::Array selectedClips;
@@ -325,7 +325,7 @@ void deleteRegionOfSelectedClips (SelectionManager& selectionManager, TimeRange 
 
     if (closeGap == CloseGap::yes)
     {
-        const auto centreTime = rangeToDelete.getCentre();
+        auto centreTime = (rangeToDelete.getStart() + rangeToDelete.getEnd()) * 0.5;
 
         if (moveAllSubsequentClipsOnTrack)
         {
@@ -343,7 +343,7 @@ void deleteRegionOfSelectedClips (SelectionManager& selectionManager, TimeRange 
     }
 }
 
-void deleteRegionOfTracks (Edit& edit, TimeRange rangeToDelete, bool onlySelected, CloseGap closeGap, SelectionManager* selectionManager)
+void deleteRegionOfTracks (Edit& edit, EditTimeRange rangeToDelete, bool onlySelected, CloseGap closeGap, SelectionManager* selectionManager)
 {
     juce::Array<Track*> tracks;
 
@@ -366,7 +366,7 @@ void deleteRegionOfTracks (Edit& edit, TimeRange rangeToDelete, bool onlySelecte
         tracks = getAllTracks (edit);
     }
 
-    if (tracks.size() == 0 || rangeToDelete.getLength() <= TimeDuration::fromSeconds (0.0001))
+    if (tracks.size() == 0 || rangeToDelete.getLength() <= 0.0001)
         return;
 
     std::unique_ptr<SelectionManager::ScopedSelectionState> selectionState;
@@ -414,7 +414,7 @@ void deleteRegionOfTracks (Edit& edit, TimeRange rangeToDelete, bool onlySelecte
             juce::Array<Clip*> clipsToRemove;
 
             for (auto& c : t->getClips())
-                if (c->getPosition().getLength() < TimeDuration::fromSeconds (0.0001))
+                if (c->getPosition().getLength() < 0.0001)
                     clipsToRemove.add (c);
 
             for (auto c : clipsToRemove)
@@ -457,9 +457,9 @@ void moveSelectedClips (const SelectableList& selectedObjectsIn, Edit& edit, Mov
     auto& ed = firstClip ? firstClip->edit
                          : firstCClip->edit;
 
-    auto moveClipsAndAutomation = [automationLocked] (const juce::Array<Clip*>& clips, TimeDuration delta)
+    auto moveClipsAndAutomation = [automationLocked] (const juce::Array<Clip*>& clips, double delta)
     {
-        if (delta == TimeDuration())
+        if (delta == 0.0)
             return;
 
         juce::Array<TrackAutomationSection> sections;
@@ -485,13 +485,13 @@ void moveSelectedClips (const SelectableList& selectedObjectsIn, Edit& edit, Mov
             c->setStart (c->getPosition().getStart() + delta, false, true);
         }
 
-        if (sections.size() > 0 && delta != TimeDuration())
+        if (sections.size() > 0 && delta != 0.0)
             moveAutomation (sections, delta, false);
     };
 
-    auto moveCollectionClipAutomation = [automationLocked] (const juce::Array<CollectionClip*>& clips, TimeDuration delta)
+    auto moveCollectionClipAutomation = [automationLocked] (const juce::Array<CollectionClip*>& clips, double delta)
     {
-        if (delta == TimeDuration())
+        if (delta == 0.0)
             return;
 
         juce::Array<TrackAutomationSection> sections;
@@ -500,7 +500,7 @@ void moveSelectedClips (const SelectableList& selectedObjectsIn, Edit& edit, Mov
             for (auto c : clips)
                 sections.add (TrackAutomationSection (*c));
 
-        if (sections.size() > 0 && delta != TimeDuration())
+        if (sections.size() > 0 && delta != 0.0)
             moveAutomation (sections, delta, false);
     };
 
@@ -508,8 +508,8 @@ void moveSelectedClips (const SelectableList& selectedObjectsIn, Edit& edit, Mov
     {
         auto selectedRange = getTimeRangeForSelectedItems (selectedObjects);
 
-        auto delta = edit.getTransport().getPosition() - (mode == MoveClipAction::moveEndToCursor ? selectedRange.getEnd()
-                                                                                                  : selectedRange.getStart());
+        auto delta = edit.getTransport().position - (mode == MoveClipAction::moveEndToCursor ? selectedRange.getEnd()
+                                                                                             : selectedRange.getStart());
 
         moveClipsAndAutomation (expandedList.getItemsOfType<Clip>(), delta);
         moveCollectionClipAutomation (selectedObjects.getItemsOfType<CollectionClip>(), delta);
@@ -637,7 +637,7 @@ void visitAllTrackItems (const Edit& edit, std::function<bool (TrackItem&)> f)
                                   });
 }
 
-TimeRange getTimeRangeForSelectedItems (const SelectableList& selected)
+EditTimeRange getTimeRangeForSelectedItems (const SelectableList& selected)
 {
     auto items = selected.getItemsOfType<TrackItem>();
 
@@ -692,9 +692,9 @@ juce::Result mergeMidiClips (juce::Array<MidiClip*> clips)
                 newClip->setGrooveTemplate (first->getGrooveTemplate());
                 newClip->setMidiChannel (first->getMidiChannel());
 
-                auto startBeat = BeatPosition::fromBeats (1.0e10);
-                auto startTime = TimePosition::fromSeconds (1.0e10);
-                auto endTime = TimePosition();
+                double startBeat = 1.0e10;
+                double startTime = 1.0e10;
+                double endTime = 0.0;
 
                 for (auto c : clips)
                 {
@@ -711,15 +711,15 @@ juce::Result mergeMidiClips (juce::Array<MidiClip*> clips)
                     MidiList sourceList;
                     sourceList.copyFrom (c->getSequenceLooped(), nullptr);
 
-                    const auto offset = BeatDuration::fromBeats (c->getPosition().getOffset().inSeconds() * c->edit.tempoSequence.getBeatsPerSecondAt (c->getPosition().getStart(), true));
+                    auto offset = c->getPosition().getOffset() * c->edit.tempoSequence.getBeatsPerSecondAt (c->getPosition().getStart(), true);
 
-                    sourceList.trimOutside (toPosition (offset), toPosition (offset + c->getLengthInBeats()), nullptr);
+                    sourceList.trimOutside (offset, offset + c->getLengthInBeats(), nullptr);
                     sourceList.moveAllBeatPositions (c->getStartBeat() - startBeat - offset, nullptr);
 
                     destinationList.addFrom (sourceList, nullptr);
                 }
 
-                newClip->setPosition ({ { startTime, endTime }, TimeDuration() });
+                newClip->setPosition ({ { startTime, endTime }, 0.0 });
                 newClip->getSequence().addFrom (destinationList, &track->edit.getUndoManager());
 
                 for (int i = clips.size(); --i >= 0;)
@@ -781,15 +781,6 @@ Plugin::Ptr findPluginForState (const Edit& edit, const juce::ValueTree& v)
 {
     for (auto p : getAllPlugins (edit, true))
         if (p->state == v)
-            return p;
-
-    return {};
-}
-
-Plugin::Ptr findPluginForID (const Edit& edit, EditItemID id)
-{
-    for (auto p : getAllPlugins (edit, true))
-        if (p->itemID == id)
             return p;
 
     return {};
@@ -886,12 +877,12 @@ void deleteAutomation (const SelectableList& selectedClips)
                 {
                     auto& curve = param->getCurve();
 
-                    if (curve.countPointsInRegion (section.range.expanded (TimeDuration::fromSeconds (0.0001))))
+                    if (curve.countPointsInRegion (section.range.expanded (0.0001)))
                     {
                         auto start = curve.getValueAt (section.range.getStart());
                         auto end   = curve.getValueAt (section.range.getEnd());
 
-                        curve.removePointsInRegion (section.range.expanded (TimeDuration::fromSeconds (0.0001)));
+                        curve.removePointsInRegion (section.range.expanded (0.0001));
                         curve.addPoint (section.range.getStart(), start, 1.0f);
                         curve.addPoint (section.range.getEnd(),   end,   0.0f);
                     }
@@ -981,4 +972,4 @@ juce::Array<MacroParameterElement*> getAllMacroParameterElements (const Edit& ed
     return elements;
 }
 
-}} // namespace tracktion { inline namespace engine
+}

@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 bool UIBehaviour::paste (const Clipboard& clipboard)
@@ -79,11 +79,11 @@ void UIBehaviour::nudgeSelectedClips (TimecodeSnapType snapType, const juce::Str
     auto& ed = clips.getFirst()->edit;
     sm.keepSelectedObjectsOnScreen();
 
-    TimeDuration delta;
+    double delta = 0.0;
     int trackDelta = 0;
 
-    if (commandDesc.contains ("right"))        delta = TimeDuration::fromSeconds (0.00001);
-    else if (commandDesc.contains ("left"))    delta = TimeDuration::fromSeconds (-0.00001);
+    if (commandDesc.contains ("right"))        delta =  0.00001;
+    else if (commandDesc.contains ("left"))    delta = -0.00001;
     else if (commandDesc.contains ("up"))      trackDelta = -1;
     else if (commandDesc.contains ("down"))    trackDelta =  1;
 
@@ -132,10 +132,10 @@ void UIBehaviour::nudgeSelectedClips (TimecodeSnapType snapType, const juce::Str
                     clips.getUnchecked(i)->moveToTrack (*targetTrack);
 
             if (sections.size())
-                moveAutomation (sections, {}, false);
+                moveAutomation (sections, 0, false);
         }
     }
-    else if (delta != TimeDuration())
+    else if (delta != 0)
     {
         juce::Array<TrackAutomationSection> sections;
 
@@ -150,7 +150,7 @@ void UIBehaviour::nudgeSelectedClips (TimecodeSnapType snapType, const juce::Str
             auto origClip1Start = first->getPosition().getStart();
             auto clipStart = origClip1Start;
 
-            if (delta > TimeDuration())
+            if (delta > 0)
                 first->setStart (snapType.roundTimeUp   (origClip1Start + delta, ed.tempoSequence), false, true);
             else
                 first->setStart (snapType.roundTimeDown (origClip1Start + delta, ed.tempoSequence), false, true);
@@ -212,12 +212,12 @@ void UIBehaviour::nudgeSelected (const juce::String& commandDesc)
 }
 
 //==============================================================================
-TimePosition UIBehaviour::getEditingPosition (Edit& e)
+double UIBehaviour::getEditingPosition (Edit& e)
 {
-    return e.getTransport().getPosition();
+    return e.getTransport().position;
 }
 
-TimeRange UIBehaviour::getEditingRange (Edit& e)
+EditTimeRange UIBehaviour::getEditingRange (Edit& e)
 {
     return e.getTransport().getLoopRange();
 }
@@ -227,4 +227,4 @@ void UIBehaviour::recreatePluginWindowContentAsync (Plugin& p)
     p.windowState->recreateWindowIfShowing();
 }
 
-}} // namespace tracktion { inline namespace engine
+}

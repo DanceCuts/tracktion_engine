@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 class RackInstance  : public Plugin
@@ -39,9 +39,9 @@ public:
     double getLatencySeconds() override;
     bool needsConstantBufferSize() override             { return true; }
 
-    void prepareForNextBlock (TimePosition) override;
+    void prepareForNextBlock (double) override;
     void applyToBuffer (const PluginRenderContext&) override;
-    void updateAutomatableParamPosition (TimePosition) override;
+    void updateAutomatableParamPosition (double time) override;
 
     juce::String getSelectableDescription() override;
 
@@ -83,4 +83,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RackInstance)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

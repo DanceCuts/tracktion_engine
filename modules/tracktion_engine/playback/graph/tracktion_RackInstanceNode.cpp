@@ -9,7 +9,7 @@
 */
 
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 RackInstanceNode::RackInstanceNode (std::unique_ptr<Node> inputNode, ChannelMap channelMapToUse)
@@ -29,12 +29,12 @@ RackInstanceNode::RackInstanceNode (std::unique_ptr<Node> inputNode, ChannelMap 
 
 }
 
-std::vector<tracktion::graph::Node*> RackInstanceNode::getDirectInputNodes()
+std::vector<tracktion_graph::Node*> RackInstanceNode::getDirectInputNodes()
 {
     return { input.get() };
 }
 
-tracktion::graph::NodeProperties RackInstanceNode::getNodeProperties()
+tracktion_graph::NodeProperties RackInstanceNode::getNodeProperties()
 {
     auto props = input->getNodeProperties();
     props.numberOfChannels = (int) maxNumChannels;
@@ -44,7 +44,7 @@ tracktion::graph::NodeProperties RackInstanceNode::getNodeProperties()
     return props;
 }
 
-void RackInstanceNode::prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo&)
+void RackInstanceNode::prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo&)
 {
 }
 
@@ -103,4 +103,4 @@ void RackInstanceNode::process (ProcessContext& pc)
     }
 }
 
-}} // namespace tracktion { inline namespace engine
+}

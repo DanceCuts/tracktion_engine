@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 class VcaAutomatableParameter : public AutomatableParameter
@@ -103,7 +103,7 @@ void VCAPlugin::muteOrUnmute()
     }
 }
 
-float VCAPlugin::updateAutomationStreamAndGetVolumeDb (TimePosition time)
+float VCAPlugin::updateAutomationStreamAndGetVolumeDb (double time)
 {
     if (isAutomationNeeded())
     {
@@ -131,4 +131,4 @@ void VCAPlugin::restorePluginStateFromValueTree (const juce::ValueTree& v)
         p->updateFromAttachedValue();
 }
 
-}} // namespace tracktion { inline namespace engine
+}

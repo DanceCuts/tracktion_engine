@@ -8,17 +8,17 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 struct RandomModifier::RandomModifierTimer    : public ModifierTimer
 {
     RandomModifierTimer (RandomModifier& rm)
-        : modifier (rm)
+        : modifier (rm), tempoSequence (rm.edit.tempoSequence)
     {
     }
 
-    void updateStreamTime (TimePosition editTime, int numSamples) override
+    void updateStreamTime (double editTime, int numSamples) override
     {
         const double blockLength = numSamples / modifier.getSampleRate();
         modifier.setEditTime (editTime);
@@ -35,7 +35,7 @@ struct RandomModifier::RandomModifierTimer    : public ModifierTimer
             ramp.setDuration (durationPerPattern);
 
             if (syncTypeThisBlock == ModifierCommon::transport)
-                ramp.setPosition (std::fmod ((float) editTime.inSeconds(), durationPerPattern));
+                ramp.setPosition (std::fmod ((float) editTime, durationPerPattern));
 
             modifier.setPhase (ramp.getProportion());
 
@@ -44,15 +44,14 @@ struct RandomModifier::RandomModifierTimer    : public ModifierTimer
         }
         else
         {
-            tempoSequence.set (editTime);
-            const auto currentTempo = tempoSequence.getTempo();
-            const auto currentTimeSig = tempoSequence.getTimeSignature();
-            const auto proportionOfBar = ModifierCommon::getBarFraction (rateTypeThisBlock);
+            tempoSequence.setTime (editTime);
+            const auto currentTempo = tempoSequence.getCurrentTempo();
+            const double proportionOfBar = ModifierCommon::getBarFraction (rateTypeThisBlock);
 
             if (syncTypeThisBlock == ModifierCommon::transport)
             {
-                const auto editTimeInBeats = tempoSequence.getBeats().inBeats();
-                const auto bars = (editTimeInBeats / currentTimeSig.numerator) * rateThisBlock;
+                const float editTimeInBeats = (float) (currentTempo.startBeatInEdit + (editTime - currentTempo.startTime) * currentTempo.beatsPerSecond);
+                const double bars = (editTimeInBeats / currentTempo.numerator) * rateThisBlock;
 
                 if (rateTypeThisBlock >= ModifierCommon::fourBars && rateTypeThisBlock <= ModifierCommon::sixtyFourthD)
                 {
@@ -62,9 +61,9 @@ struct RandomModifier::RandomModifierTimer    : public ModifierTimer
             }
             else
             {
-                const double bpm = (currentTempo * rateThisBlock) / proportionOfBar;
+                const double bpm = (currentTempo.bpm * rateThisBlock) / proportionOfBar;
                 const double secondsPerBeat = 60.0 / bpm;
-                const float secondsPerStep = static_cast<float> (secondsPerBeat * currentTimeSig.numerator);
+                const float secondsPerStep = static_cast<float> (secondsPerBeat * currentTempo.numerator);
                 const float secondsPerPattern = secondsPerStep;
                 ramp.setDuration (secondsPerPattern);
 
@@ -90,7 +89,7 @@ struct RandomModifier::RandomModifierTimer    : public ModifierTimer
 
     RandomModifier& modifier;
     Ramp ramp;
-    tempo::Sequence::Position tempoSequence { createPosition (modifier.edit.tempoSequence) };
+    TempoSequencePosition tempoSequence;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RandomModifierTimer)
 };
@@ -280,4 +279,4 @@ void RandomModifier::valueTreeChanged()
         changedTimer.startTimerHz (30);
 }
 
-}} // namespace tracktion { inline namespace engine
+}

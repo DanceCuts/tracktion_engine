@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /**
@@ -94,15 +94,9 @@ public:
       */
     virtual bool canScanPluginsOutOfProcess()                                       { return false; }
 
-    /** You may want to disable auto initialisation of the device manager if you
-        are using the engine in a plugin.
-    */
+    // You may want to disable auto initialisation of the device manager if you
+    // are using the engine in a plugin
     virtual bool autoInitialiseDeviceManager()                                      { return true; }
-
-    /** In plugin builds, you might want to avoid adding the system audio devices
-        and only use the host inputs.
-    */
-    virtual bool addSystemAudioIODeviceTypes()                                      { return true; }
 
     // some debate surrounds whether middle-C is C3, C4 or C5. In Tracktion we
     // default this value to 4
@@ -190,9 +184,9 @@ public:
         You can override this to add your own messages but should generally follow the
         procedure in MidiList::createDefaultPlaybackMidiSequence.
     */
-    virtual juce::MidiMessageSequence createPlaybackMidiSequence (const MidiList& list, MidiClip& clip, MidiList::TimeBase tb, bool generateMPE)
+    virtual juce::MidiMessageSequence createPlaybackMidiSequence (const MidiList& list, MidiClip& clip, bool generateMPE)
     {
-        return MidiList::createDefaultPlaybackMidiSequence (list, clip, tb, generateMPE);
+        return MidiList::createDefaultPlaybackMidiSequence (list, clip, generateMPE);
     }
     
     /** Must return the default looped sequence type to use.
@@ -205,17 +199,8 @@ public:
 
     /** If this returns true, it means that newly inserted clips will automatically have a fade-in and fade-out of 3ms applied. */
     virtual bool autoAddClipEdgeFades()                                             { return false; }
-
-    /** Determines the default properties of clips. */
-    struct ClipDefaults
-    {
-        bool useProxyFile = true;                                           ///< @see AudioClipBase::setUsesProxy
-        ResamplingQuality resamplingQuality = ResamplingQuality::lagrange;  ///< @see setResamplingQuality::setResamplingQuality
-    };
-
-    /** Returns the defaults to be applied to new clips. */
-    virtual ClipDefaults getClipDefaults()                                          { return {}; }
-
+    
+    
     struct ControlSurfaces
     {
         bool mackieMCU = true;
@@ -233,4 +218,4 @@ public:
     virtual ControlSurfaces getDesiredControlSurfaces()                             { return {}; }
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

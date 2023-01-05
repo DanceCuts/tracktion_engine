@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 ExternalController::ExternalController (Engine& e, ControlSurface* c)  : engine (e), controlSurface (c)
@@ -670,7 +670,7 @@ void ExternalController::userPressedGoToMarker (int marker)
     if (auto tc = getTransport())
         if (auto ed = getEdit())
             if (auto mc = ed->getMarkerManager().getMarkers().getObjectPointer (marker + startMarkerNumber))
-                tc->setPosition (mc->getPosition().getStart());
+                tc->setCurrentPosition (mc->getPosition().getStart());
 }
 
 void ExternalController::updateParameters()
@@ -1339,4 +1339,4 @@ juce::String ExternalController::shortenName (juce::String s, int maxLen)
     return result.substring (0, maxLen);
 }
 
-}} // namespace tracktion { inline namespace engine
+}

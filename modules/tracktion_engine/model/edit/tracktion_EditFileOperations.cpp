@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 struct ThreadedEditFileWriter   : private juce::Thread
@@ -281,7 +281,7 @@ bool EditFileOperations::save (bool warnOfFailure,
     tempFile.deleteFile();
 
     if (auto item = edit.engine.getProjectManager().getProjectItem (edit))
-        item->setLength (edit.getLength().inSeconds());
+        item->setLength (edit.getLength());
 
     edit.resetChangedStatus();
     return true;
@@ -464,28 +464,28 @@ juce::ValueTree loadEditFromFile (Engine& e, const juce::File& f, ProjectItemID 
     return state;
 }
 
-std::unique_ptr<Edit> loadEditFromFile (Engine& engine, const juce::File& editFile, Edit::EditRole role)
+std::unique_ptr<Edit> loadEditFromFile (Engine& engine, const juce::File& editFile)
 {
-    auto editState = loadEditFromFile (engine, editFile, ProjectItemID{});
+    auto editState = loadEditFromFile (engine, editFile, {});
     auto id = ProjectItemID::fromProperty (editState, IDs::projectID);
     
     if (! id.isValid())
         id = ProjectItemID::createNewID (0);
-
+    
     Edit::Options options =
     {
         engine,
         editState,
         id,
-
-        role,
+        
+        Edit::forEditing,
         nullptr,
         Edit::getDefaultNumUndoLevels(),
-
+        
         [editFile] { return editFile; },
         {}
     };
-
+    
     return std::make_unique<Edit> (options);
 }
 
@@ -514,4 +514,4 @@ juce::ValueTree createEmptyEdit (Engine& e)
     return loadEditFromFile (e, {}, ProjectItemID::createNewID (0));
 }
 
-}} // namespace tracktion { inline namespace engine
+}

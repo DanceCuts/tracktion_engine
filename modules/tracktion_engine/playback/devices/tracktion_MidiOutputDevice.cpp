@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 static bool shouldSendAllControllersOffMessages = true;
@@ -33,7 +33,7 @@ public:
         if (edit != nullptr)
         {
             framesPerSecond = edit->getTimecodeFormat().getFPS();
-            offset = edit->getTimecodeOffset().inSeconds();
+            offset = edit->getTimecodeOffset();
 
             if (framesPerSecond == 25)
                 midiTCType = juce::MidiMessage::fps25;
@@ -177,15 +177,15 @@ public:
         wasPlaying = false;
         position = nullptr;
         needsToSendPosition = true;
-        lastBlockStart = -100000.0s;
+        lastBlockStart = -100000.0;
         lastBlockEndPPQ = 0;
 
         if (edit != nullptr)
-            position = std::make_unique<tempo::Sequence::Position> (createPosition (edit->tempoSequence));
+            position.reset (new TempoSequencePosition (edit->tempoSequence));
     }
 
     void addMessages (bool playHeadIsPlaying, TransportControl* tc, MidiMessageArray& buffer,
-                      TimePosition blockStartTime, TimeDuration blockLength)
+                      double blockStartTime, double blockLength)
     {
         CRASH_TRACER
         const bool isPlaying = playHeadIsPlaying && position != nullptr;
@@ -203,10 +203,10 @@ public:
         {
             const juce::ScopedLock sl (positionLock);
 
-            position->set (blockStartTime);
+            position->setTime (blockStartTime);
             auto blockStartPPQ = position->getPPQTime();
 
-            position->set (blockStartTime + blockLength);
+            position->setTime (blockStartTime + blockLength);
             auto endPPQ = position->getPPQTime();
 
             const bool jumped = std::abs (lastBlockEndPPQ - endPPQ) > 0.4;
@@ -219,7 +219,7 @@ public:
 
             const double startNum = blockStartPPQ * 24.0;
             const double endNum = endPPQ * 24.0;
-            const double timePerNum = blockLength.inSeconds() / (endNum - startNum);
+            const double timePerNum = blockLength / (endNum - startNum);
             auto num = (int) std::floor (startNum + 0.999999);
 
             while (num < endNum)
@@ -253,9 +253,8 @@ private:
     bool wasPlaying = false;
     bool needsToSendPosition = false;
     juce::CriticalSection positionLock;
-    std::unique_ptr<tempo::Sequence::Position> position;
-    TimePosition lastBlockStart;
-    double lastBlockEndPPQ = 0;
+    std::unique_ptr<TempoSequencePosition> position;
+    double lastBlockStart = 0, lastBlockEndPPQ = 0;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (MidiClockGenerator)
 };
@@ -318,7 +317,7 @@ void MidiOutputDevice::setEnabled (bool b)
     }
 }
 
-juce::String MidiOutputDevice::prepareToPlay (Edit* edit, TimePosition)
+juce::String MidiOutputDevice::prepareToPlay (Edit* edit, double)
 {
     if (outputDevice == nullptr)
         return TRANS("Couldn't open the MIDI port");
@@ -541,9 +540,9 @@ void MidiOutputDevice::fireMessage (const juce::MidiMessage& message)
     }
 }
 
-TimeDuration MidiOutputDevice::getDeviceDelay() const noexcept
+double MidiOutputDevice::getDeviceDelay() const noexcept
 {
-    return TimeDuration::fromSeconds ((preDelayMillisecs + audioAdjustmentDelay) * 0.001);
+    return (preDelayMillisecs + audioAdjustmentDelay) * 0.001;
 }
 
 void MidiOutputDevice::setPreDelayMs (int ms)
@@ -641,7 +640,7 @@ MidiOutputDeviceInstance::~MidiOutputDeviceInstance()
 {
 }
 
-juce::String MidiOutputDeviceInstance::prepareToPlay (TimePosition, bool shouldSendMidiTC)
+juce::String MidiOutputDeviceInstance::prepareToPlay (double, bool shouldSendMidiTC)
 {
     if (getMidiOutput().outputDevice == nullptr)
         return TRANS("Couldn't open the MIDI port");
@@ -679,13 +678,13 @@ void MidiOutputDeviceInstance::stop()
     }
 }
 
-void MidiOutputDeviceInstance::mergeInMidiMessages (const MidiMessageArray& source, TimePosition editTime)
+void MidiOutputDeviceInstance::mergeInMidiMessages (const MidiMessageArray& source, double editTime)
 {
-    midiMessages.mergeFromWithOffset (source, (editTime + getMidiOutput().getDeviceDelay()).inSeconds());
+    midiMessages.mergeFromWithOffset (source, editTime + getMidiOutput().getDeviceDelay());
     midiMessages.sortByTimestamp();
 }
 
-void MidiOutputDeviceInstance::addMidiClockMessagesToCurrentBlock (bool isPlaying, bool isDragging, TimeRange editTimeRange)
+void MidiOutputDeviceInstance::addMidiClockMessagesToCurrentBlock (bool isPlaying, bool isDragging, EditTimeRange editTimeRange)
 {
     auto& midiOut = getMidiOutput();
 
@@ -694,8 +693,8 @@ void MidiOutputDeviceInstance::addMidiClockMessagesToCurrentBlock (bool isPlayin
         if (midiOut.sendTimecode)
             timecodeGenerator->addMessages (isPlaying, isDragging,
                                             &edit.getTransport(), midiMessages,
-                                            editTimeRange.getStart().inSeconds(),
-                                            editTimeRange.getEnd().inSeconds());
+                                            editTimeRange.getStart(),
+                                            editTimeRange.getEnd());
 
         if (midiOut.sendMidiClock || midiOut.sendControllerMidiClock)
             midiClockGenerator->addMessages (isPlaying,
@@ -705,4 +704,4 @@ void MidiOutputDeviceInstance::addMidiClockMessagesToCurrentBlock (bool isPlayin
     }
 }
 
-}} // namespace tracktion { inline namespace engine
+}

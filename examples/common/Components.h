@@ -28,10 +28,7 @@ namespace IDs
     #undef DECLARE_ID
 }
 
-namespace te = tracktion;
-
-//==============================================================================
-void drawMidiClip (juce::Graphics&, te::MidiClip&, juce::Rectangle<int>, te::TimeRange);
+namespace te = tracktion_engine;
 
 //==============================================================================
 class EditViewState
@@ -55,25 +52,25 @@ public:
         showMidiDevices.referTo (state, IDs::showMidiDevices, um, false);
         showWaveDevices.referTo (state, IDs::showWaveDevices, um, true);
 
-        viewX1.referTo (state, IDs::viewX1, um, 0s);
-        viewX2.referTo (state, IDs::viewX2, um, 60s);
+        viewX1.referTo (state, IDs::viewX1, um, 0);
+        viewX2.referTo (state, IDs::viewX2, um, 60);
         viewY.referTo (state, IDs::viewY, um, 0);
     }
     
-    int timeToX (te::TimePosition time, int width) const
+    int timeToX (double time, int width) const
     {
         return roundToInt (((time - viewX1) * width) / (viewX2 - viewX1));
     }
     
-    te::TimePosition xToTime (int x, int width) const
+    double xToTime (int x, int width) const
     {
-        return toPosition ((viewX2 - viewX1) * (double (x) / width)) + toDuration (viewX1.get());
+        return (double (x) / width) * (viewX2 - viewX1) + viewX1;
     }
     
-    te::TimePosition beatToTime (te::BeatPosition b) const
+    double beatToTime (double b) const
     {
         auto& ts = edit.tempoSequence;
-        return ts.toTime (b);
+        return ts.beatsToTime (b);
     }
     
     te::Edit& edit;
@@ -82,8 +79,7 @@ public:
     CachedValue<bool> showMasterTrack, showGlobalTrack, showMarkerTrack, showChordTrack, showArrangerTrack,
                       drawWaveforms, showHeaders, showFooters, showMidiDevices, showWaveDevices;
     
-    CachedValue<te::TimePosition> viewX1, viewX2;
-    CachedValue<double> viewY;
+    CachedValue<double> viewX1, viewX2, viewY;
     
     ValueTree state;
 };
@@ -119,7 +115,7 @@ private:
     void drawWaveform (Graphics& g, te::AudioClipBase& c, te::SmartThumbnail& thumb, Colour colour,
                        int left, int right, int y, int h, int xOffset);
     void drawChannels (Graphics& g, te::SmartThumbnail& thumb, Rectangle<int> area, bool useHighRes,
-                       te::TimeRange time, bool useLeft, bool useRight,
+                       te::EditTimeRange time, bool useLeft, bool useRight,
                        float leftGain, float rightGain);
 
     std::unique_ptr<te::SmartThumbnail> thumbnail;
@@ -150,13 +146,13 @@ private:
     void updatePosition();
     void initialiseThumbnailAndPunchTime();
     void drawThumbnail (Graphics& g, Colour waveformColour) const;
-    bool getBoundsAndTime (juce::Rectangle<int>& bounds, tracktion::TimeRange& times) const;
+    bool getBoundsAndTime (Rectangle<int>& bounds, Range<double>& times) const;
     
     te::Track::Ptr track;
     EditViewState& editViewState;
     
     te::RecordingThumbnailManager::Thumbnail::Ptr thumbnail;
-    te::TimePosition punchInTime = -1.0s;
+    double punchInTime = -1.0;
 };
 
 //==============================================================================

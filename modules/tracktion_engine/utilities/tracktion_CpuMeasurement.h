@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 struct ScopedCpuMeter
@@ -75,4 +75,4 @@ private:
  #define SCOPED_REALTIME_CHECK_LONGER
 #endif
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

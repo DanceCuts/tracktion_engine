@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -50,7 +50,7 @@ private:
 
 //==============================================================================
 /** Loads an edit from file, ready for playback / editing */
-std::unique_ptr<Edit> loadEditFromFile (Engine&, const juce::File&, Edit::EditRole role = Edit::forEditing);
+std::unique_ptr<Edit> loadEditFromFile (Engine&, const juce::File&);
 
 /** Creates a new edit for a file, ready for playback / editing */
 std::unique_ptr<Edit> createEmptyEdit (Engine&, const juce::File&);
@@ -75,4 +75,4 @@ juce::ValueTree updateLegacyEdit (const juce::ValueTree&);
 void updateLegacyEdit (juce::XmlElement& editXML);
 
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

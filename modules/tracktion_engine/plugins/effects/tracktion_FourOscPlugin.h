@@ -7,7 +7,7 @@
 */
 
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 class FODelay;
@@ -390,7 +390,7 @@ private:
     void applyEffects (juce::AudioBuffer<float>& buffer);
     float paramValue (AutomatableParameter::Ptr param);
 
-    tempo::Sequence::Position currentPos { createPosition (edit.tempoSequence) };
+    TempoSequencePosition currentPos {edit.tempoSequence};
     juce::Reverb reverb;
     std::unique_ptr<FODelay> delay;
     std::unique_ptr<FOChorus> chorus;
@@ -404,4 +404,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FourOscPlugin)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

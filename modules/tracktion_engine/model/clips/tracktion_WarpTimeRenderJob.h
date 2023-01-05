@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -74,7 +74,7 @@ private:
         auto tm = clip.getTimeStretchMode();
         proxyInfo = std::make_unique<AudioClipBase::ProxyRenderingInfo>();
         proxyInfo->audioSegmentList  = AudioSegmentList::create (clip);
-        proxyInfo->clipTime          = { {}, clip.getWarpTimeManager().getWarpEndMarkerTime() };
+        proxyInfo->clipTime          = { 0, clip.getWarpTimeManager().getWarpEndMarkerTime() };
         proxyInfo->speedRatio        = 1.0;
         proxyInfo->mode              = (tm != TimeStretcher::disabled && tm != TimeStretcher::melodyne)
                                          ? tm : TimeStretcher::defaultMode;
@@ -87,4 +87,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WarpTimeRenderJob)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

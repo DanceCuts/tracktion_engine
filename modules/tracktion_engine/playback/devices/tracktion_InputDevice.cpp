@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 InputDevice::InputDevice (Engine& e, const juce::String& t, const juce::String& n)
@@ -366,7 +366,7 @@ void InputDeviceInstance::prepareAndPunchRecord()
             return;
 
         auto& dm = edit.engine.getDeviceManager();
-        const auto start = context.getPosition();
+        const double start = context.getPosition();
         const double sampleRate = dm.getSampleRate();
         const int blockSize = dm.getBlockSize();
 
@@ -415,4 +415,4 @@ void InputDeviceInstance::updateRecordingStatus()
     }
 }
 
-}} // namespace tracktion { inline namespace engine
+}

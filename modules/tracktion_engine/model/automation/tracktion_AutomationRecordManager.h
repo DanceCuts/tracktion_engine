@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /** Stores automation data as it's being read in, and writes it back to the
@@ -57,8 +57,8 @@ public:
     /** Set the 'glide' or crossfade length it'll use to patch the data back into
         the edit.
     */
-    static TimeDuration getGlideSeconds (Engine&);
-    static void setGlideSeconds (Engine&, TimeDuration);
+    static double getGlideSeconds (Engine&);
+    static void setGlideSeconds (Engine&, double secs);
 
     Engine& engine;
 
@@ -75,10 +75,9 @@ private:
 
         struct Change
         {
-            inline Change (TimePosition t, float v) noexcept
-                : time (t), value (v) {}
+            inline Change (double t, float v) noexcept : time (t), value (v) {}
 
-            TimePosition time;
+            double time;
             float value;
         };
 
@@ -96,12 +95,12 @@ private:
 
     friend class AutomatableParameter;
     void postFirstAutomationChange (AutomatableParameter&, float originalValue);
-    void postAutomationChange (AutomatableParameter&, TimePosition time, float value);
+    void postAutomationChange (AutomatableParameter&, double time, float value);
     void parameterBeingDeleted (AutomatableParameter&);
 
-    void applyChangesToParameter (AutomationParamData*, TimePosition endTime, bool toEnd);
+    void applyChangesToParameter (AutomationParamData*, double endTime, bool toEnd);
 
     void changeListenerCallback (juce::ChangeBroadcaster*);
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

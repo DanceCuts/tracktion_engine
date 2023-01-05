@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 void CustomControlSurface::CustomControlSurfaceManager::registerSurface (CustomControlSurface* item)
@@ -183,8 +183,7 @@ juce::Array<ControlSurface*> CustomControlSurface::getCustomSurfaces (ExternalCo
 
     if (auto n = ecm.engine.getPropertyStorage().getXmlProperty (SettingID::customMidiControllers))
         for (auto controllerXml : n->getChildIterator())
-            if (controllerXml->hasTagName ("MIDICUSTOMCONTROLSURFACE"))
-                surfaces.add (new CustomControlSurface (ecm, *controllerXml));
+            surfaces.add (new CustomControlSurface (ecm, *controllerXml));
 
     return surfaces;
 }
@@ -1613,7 +1612,7 @@ void CustomControlSurface::addMarker (float val, int)
 {
     if (shouldActOnValue (val))
         if (auto e = getEdit())
-            e->getMarkerManager().createMarker (-1, e->getTransport().getPosition(), {}, externalControllerManager.getSelectionManager());
+            e->getMarkerManager().createMarker (-1, e->getTransport().position, 0.0, externalControllerManager.getSelectionManager());
 }
 
 void CustomControlSurface::prevMarker (float val, int)  { if (shouldActOnValue (val)) userPressedPreviousMarker(); }
@@ -1668,4 +1667,4 @@ void CustomControlSurface::clearMarker (int)
 {
 }
 
-}} // namespace tracktion { inline namespace engine
+}

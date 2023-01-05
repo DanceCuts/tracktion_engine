@@ -33,22 +33,23 @@ struct InterleavingScratchBuffer
 {
     InterleavedBuffer<SampleType> buffer;
 
-    InterleavedView<SampleType> getInterleavedBuffer (choc::buffer::Size size)
-    {
-        if (buffer.getNumChannels() < size.numChannels || buffer.getNumFrames() < size.numFrames)
-        {
-            buffer.resize (size);
-            return buffer.getView();
-        }
-
-        return buffer.getSection ({ 0, size.numChannels },
-                                  { 0, size.numFrames });
-    }
-
     template <typename SourceBufferType>
     InterleavedView<SampleType> interleave (const SourceBufferType& source)
     {
-        auto dest = getInterleavedBuffer (source.getSize());
+        InterleavedView<SampleType> dest;
+        auto sourceSize = source.getSize();
+
+        if (buffer.getNumChannels() < sourceSize.numChannels || buffer.getNumFrames() < sourceSize.numFrames)
+        {
+            buffer.resize (source.getSize());
+            dest = buffer.getView();
+        }
+        else
+        {
+            dest = buffer.getSection ({ 0, sourceSize.numChannels },
+                                      { 0, sourceSize.numFrames });
+        }
+
         copy (dest, source);
         return dest;
     }
@@ -61,22 +62,23 @@ struct DeinterleavingScratchBuffer
 {
     ChannelArrayBuffer<SampleType> buffer;
 
-    ChannelArrayView<SampleType> getDeinterleavedBuffer (choc::buffer::Size size)
-    {
-        if (buffer.getNumChannels() < size.numChannels || buffer.getNumFrames() < size.numFrames)
-        {
-            buffer.resize (size);
-            return buffer.getView();
-        }
-
-        return buffer.getSection ({ 0, size.numChannels },
-                                  { 0, size.numFrames });
-    }
-
     template <typename SourceBufferType>
     ChannelArrayView<SampleType> deinterleave (const SourceBufferType& source)
     {
-        auto dest = getDeinterleavedBuffer (source.getSize());
+        ChannelArrayView<SampleType> dest;
+        auto sourceSize = source.getSize();
+
+        if (buffer.getNumChannels() < sourceSize.numChannels || buffer.getNumFrames() < sourceSize.numFrames)
+        {
+            buffer.resize (source.getSize());
+            dest = buffer.getView();
+        }
+        else
+        {
+            dest = buffer.getSection ({ 0, sourceSize.numChannels },
+                                      { 0, sourceSize.numFrames });
+        }
+
         copy (dest, source);
         return dest;
     }
@@ -96,7 +98,7 @@ inline InterleavedView<SampleType> createInterleavedViewFromValue (const choc::v
     auto sourceData = const_cast<SampleType*> (reinterpret_cast<const SampleType*> (value.getRawData()));
     auto frameType = arrayType.getElementType();
 
-    if (frameType.isVector() || frameType.isUniformArray())
+    if (frameType.isVector())
     {
         CHOC_ASSERT (frameType.getElementType().isPrimitiveType<SampleType>());
         return createInterleavedView (sourceData, frameType.getNumElements(), numFrames);

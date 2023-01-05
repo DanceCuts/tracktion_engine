@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 struct QuantisationTypeInfo
@@ -69,14 +69,6 @@ QuantisationType& QuantisationType::operator= (const QuantisationType& other)
     fractionOfBeat = other.fractionOfBeat;
 
     return *this;
-}
-
-bool QuantisationType::operator== (const QuantisationType& o) const
-{
-    return proportion == o.proportion
-        && typeIndex == o.typeIndex
-        && fractionOfBeat == o.fractionOfBeat
-        && quantiseNoteOffs == o.quantiseNoteOffs;
 }
 
 void QuantisationType::initialiseCachedValues (juce::UndoManager* um)
@@ -150,56 +142,56 @@ void QuantisationType::setProportion (float prop)
     proportion = juce::jlimit (0.0f, 1.0f, prop);
 }
 
-TimePosition QuantisationType::roundToNearest (TimePosition time, const Edit& edit) const
+double QuantisationType::roundToNearest (double time, const Edit& edit) const
 {
     return roundTo (time, 0.5 - 1.0e-10, edit);
 }
 
-TimePosition QuantisationType::roundUp (TimePosition time, const Edit& edit) const
+double QuantisationType::roundUp (double time, const Edit& edit) const
 {
     return roundTo (time, 1.0 - 1.0e-10, edit);
 }
 
-BeatPosition QuantisationType::roundToBeat (BeatPosition beatNumber, double adjustment) const
+double QuantisationType::roundToBeat (double beatNumber, double adjustment) const
 {
     if (typeIndex == 0)
         return beatNumber;
 
-    const double beats = fractionOfBeat * floor (beatNumber.inBeats() / fractionOfBeat + adjustment);
+    const double beats = fractionOfBeat * floor (beatNumber / fractionOfBeat + adjustment);
 
-    return BeatPosition::fromBeats (proportion == 1.0 ? beats
-                                                      : beatNumber.inBeats() + proportion * (beats - beatNumber.inBeats()));
+    return proportion == 1.0 ? beats
+                             : beatNumber + proportion * (beats - beatNumber);
 }
 
-BeatPosition QuantisationType::roundBeatToNearest (BeatPosition beatNumber) const
+double QuantisationType::roundBeatToNearest (double beatNumber) const
 {
     return roundToBeat (beatNumber, 0.5);
 }
 
-BeatPosition QuantisationType::roundBeatUp (BeatPosition beatNumber) const
+double QuantisationType::roundBeatUp (double beatNumber) const
 {
     return roundToBeat (beatNumber, 1.0 - 1.0e-10);
 }
 
-BeatPosition QuantisationType::roundBeatToNearestNonZero (BeatPosition beatNumber) const
+double QuantisationType::roundBeatToNearestNonZero (double beatNumber) const
 {
     auto t = roundBeatToNearest (beatNumber);
 
-    return t == BeatPosition() ? BeatPosition::fromBeats (fractionOfBeat) : t;
+    return t == 0 ? fractionOfBeat : t;
 }
 
-TimePosition QuantisationType::roundTo (TimePosition time, double adjustment, const Edit& edit) const
+double QuantisationType::roundTo (double time, double adjustment, const Edit& edit) const
 {
     if (typeIndex == 0)
         return time;
 
     auto& s = edit.tempoSequence;
-    auto beats = s.toBeats (time);
+    double beats = s.timeToBeats (time);
 
-    beats = BeatPosition::fromBeats (fractionOfBeat * std::floor (beats.inBeats() / fractionOfBeat + adjustment));
+    beats = fractionOfBeat * floor (beats / fractionOfBeat + adjustment);
 
-    return proportion >= 1.0 ? s.toTime (beats)
-                             : time + toDuration (s.toTime (beats) - toDuration (time)) * proportion.get();
+    return proportion >= 1.0 ? s.beatsToTime (beats)
+                             : time + proportion * (s.beatsToTime (beats) - time);
 }
 
 juce::StringArray QuantisationType::getAvailableQuantiseTypes (bool translated)
@@ -235,7 +227,7 @@ void QuantisationType::valueTreePropertyChanged (juce::ValueTree& vt, const juce
     }
 }
 
-void QuantisationType::applyQuantisationToSequence (juce::MidiMessageSequence& ms, Edit& ed, TimePosition start)
+void QuantisationType::applyQuantisationToSequence (juce::MidiMessageSequence& ms, Edit& ed, double start)
 {
     if (! isEnabled())
         return;
@@ -247,7 +239,7 @@ void QuantisationType::applyQuantisationToSequence (juce::MidiMessageSequence& m
 
         if (m.isNoteOn())
         {
-            const auto noteOnTime = (roundToNearest (start + TimeDuration::fromSeconds (m.getTimeStamp()), ed) - start).inSeconds();
+            const auto noteOnTime = roundToNearest (start + m.getTimeStamp(), ed) - start;
 
             if (auto noteOff = e->noteOffObject)
             {
@@ -255,12 +247,12 @@ void QuantisationType::applyQuantisationToSequence (juce::MidiMessageSequence& m
 
                 if (quantiseNoteOffs)
                 {
-                    auto noteOffTime = (roundUp (start + TimeDuration::fromSeconds (mOff.getTimeStamp()), ed) - start).inSeconds();
+                    auto noteOffTime = roundUp (start + mOff.getTimeStamp(), ed) - start;
 
                     static constexpr double beatsToBumpUpBy = 1.0 / 512.0;
 
                     if (noteOffTime <= noteOnTime) // Don't want note on and off time the same
-                        noteOffTime = roundUp (TimePosition::fromSeconds (noteOnTime + beatsToBumpUpBy), ed).inSeconds();
+                        noteOffTime = roundUp (noteOnTime + beatsToBumpUpBy, ed);
 
                     mOff.setTimeStamp (noteOffTime);
                 }
@@ -274,9 +266,9 @@ void QuantisationType::applyQuantisationToSequence (juce::MidiMessageSequence& m
         }
         else if (m.isNoteOff() && quantiseNoteOffs)
         {
-            m.setTimeStamp ((roundUp (start + TimeDuration::fromSeconds (m.getTimeStamp()), ed) - start).inSeconds());
+            m.setTimeStamp (roundUp (start + m.getTimeStamp(), ed) - start);
         }
     }
 }
 
-}} // namespace tracktion { inline namespace engine
+}

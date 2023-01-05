@@ -10,7 +10,7 @@
 
 #pragma once
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 class TrackMuteState;
@@ -19,27 +19,27 @@ class TrackMuteState;
     Node for an aux send.
     This is a SendNode but needs to update automation with the correct latency.
 */
-class AuxSendNode final : public tracktion::graph::SendNode
+class AuxSendNode final : public tracktion_graph::SendNode
 {
 public:
     //==============================================================================
     /** Creates a AuxSendNode to process an aux send. */
     AuxSendNode (std::unique_ptr<Node> inputNode, int busIDToUse,
-                 AuxSendPlugin&, tracktion::graph::PlayHeadState&, const TrackMuteState*);
+                 AuxSendPlugin&, tracktion_graph::PlayHeadState&, const TrackMuteState*);
 
     //==============================================================================
-    void prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo&) override;
+    void prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo&) override;
     void process (ProcessContext&) override;
     
 private:
     //==============================================================================
-    tracktion::graph::PlayHeadState& playHeadState;
+    tracktion_graph::PlayHeadState& playHeadState;
 
     Plugin::Ptr pluginPtr;
     AuxSendPlugin& sendPlugin;
     
     double sampleRate = 44100.0;
-    TimeDuration automationAdjustmentTime;
+    double automationAdjustmentTime = 0.0;
 };
 
-}} // namespace tracktion { inline namespace engine
+}

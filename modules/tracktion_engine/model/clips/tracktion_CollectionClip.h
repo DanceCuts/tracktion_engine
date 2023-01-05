@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -29,7 +29,7 @@ public:
 
     juce::String getName() override;
 
-    ClipPosition getPosition() const override           { return { range, TimeDuration() }; }
+    ClipPosition getPosition() const override           { return { range, 0 }; }
     Track* getTrack() const override                    { return track; }
 
     bool moveToTrack (Track&);
@@ -51,7 +51,7 @@ public:
 
     bool isGroupCollection() const                      { return getFolderTrack() == nullptr; }
 
-    TimeRange range;
+    EditTimeRange range;
 
 private:
     Track* track;
@@ -62,4 +62,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (CollectionClip)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

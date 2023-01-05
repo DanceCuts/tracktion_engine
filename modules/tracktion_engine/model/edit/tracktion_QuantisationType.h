@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -24,9 +24,8 @@ public:
 
     QuantisationType (const QuantisationType&);
     QuantisationType& operator= (const QuantisationType&);
-    bool operator== (const QuantisationType&) const;
 
-    void applyQuantisationToSequence (juce::MidiMessageSequence&, Edit&, TimePosition sequenceStartOffset);
+    void applyQuantisationToSequence (juce::MidiMessageSequence&, Edit&, double sequenceStartOffset);
 
     //==============================================================================
     /** this type may represent "no quantising" */
@@ -55,12 +54,12 @@ public:
     void setIsQuantisingNoteOffs (bool isQuantising)        { quantiseNoteOffs = isQuantising; }
 
     //==============================================================================
-    BeatPosition roundBeatToNearest (BeatPosition beatNumber) const;
-    BeatPosition roundBeatUp (BeatPosition beatNumber) const;
-    BeatPosition roundBeatToNearestNonZero (BeatPosition beatNumber) const;
+    double roundBeatToNearest (double beatNumber) const;
+    double roundBeatUp (double beatNumber) const;
+    double roundBeatToNearestNonZero (double beatNumber) const;
 
-    TimePosition roundToNearest (TimePosition, const Edit&) const;
-    TimePosition roundUp (TimePosition, const Edit&) const;
+    double roundToNearest (double time, const Edit& edit) const;
+    double roundUp (double time, const Edit& edit) const;
 
     juce::ValueTree state;
     juce::CachedValue<juce::String> typeName;
@@ -75,8 +74,8 @@ private:
 
     void updateType();
     void updateFraction();
-    TimePosition roundTo (TimePosition, double adjustment, const Edit&) const;
-    BeatPosition roundToBeat (BeatPosition beatNumber, double adjustment) const;
+    double roundTo (double time, double adjustment, const Edit&) const;
+    double roundToBeat (double beatNumber, double adjustment) const;
 
     void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override;
     void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override {}
@@ -85,4 +84,4 @@ private:
     void valueTreeParentChanged (juce::ValueTree&) override {}
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

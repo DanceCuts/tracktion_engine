@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /** */
@@ -44,7 +44,7 @@ public:
     bool isFrozen (FreezeType) const override;
 
     //==============================================================================
-    float getVcaDb (TimePosition);
+    float getVcaDb (double tm);
     VCAPlugin* getVCAPlugin();
     VolumeAndPanPlugin* getVolumePlugin();
 
@@ -53,16 +53,16 @@ public:
     CollectionClip* getCollectionClip (int index)  const noexcept;
     int getNumCollectionClips() const noexcept;
     int indexOfCollectionClip (CollectionClip*) const;
-    int getIndexOfNextCollectionClipAt (TimePosition);
-    CollectionClip* getNextCollectionClipAt (TimePosition);
+    int getIndexOfNextCollectionClipAt (double time);
+    CollectionClip* getNextCollectionClipAt (double time);
     bool contains (CollectionClip*) const;
 
     //==============================================================================
     int getNumTrackItems() const override;
     TrackItem* getTrackItem (int idx) const override;
     int indexOfTrackItem (TrackItem*) const override;
-    int getIndexOfNextTrackItemAt (TimePosition) override;
-    TrackItem* getNextTrackItemAt (TimePosition) override;
+    int getIndexOfNextTrackItemAt (double time) override;
+    TrackItem* getNextTrackItemAt (double time) override;
 
     //==============================================================================
     bool isMuted (bool includeMutingByDestination) const override;
@@ -86,17 +86,16 @@ private:
     juce::CachedValue<bool> muted, soloed, soloIsolated;
     bool dirtyClips = true;
 
-    std::mutex pluginMutex;
     juce::ReferenceCountedObjectPtr<VCAPlugin> vcaPlugin;
     juce::ReferenceCountedObjectPtr<VolumeAndPanPlugin> volumePlugin;
     AsyncCaller pluginUpdater;
 
     void updatePlugins();
-    TimeRange getClipExtendedBounds (Clip&);
+    EditTimeRange getClipExtendedBounds (Clip&);
 
     void valueTreeChildAdded (juce::ValueTree&, juce::ValueTree&) override;
     void valueTreeChildRemoved (juce::ValueTree&, juce::ValueTree&, int) override;
     void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override;
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

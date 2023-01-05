@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 static inline HashCode getAudioFileHash (const juce::File& file) noexcept
@@ -822,4 +822,4 @@ void AudioFileManager::handleAsyncUpdate()
         checkFileForChanges (fileToCheck);
 }
 
-}} // namespace tracktion { inline namespace engine
+}

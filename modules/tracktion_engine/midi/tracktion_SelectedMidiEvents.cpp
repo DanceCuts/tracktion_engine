@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 SelectedMidiEvents::SelectedMidiEvents (MidiClip& m)  : clips ({ &m })
@@ -350,17 +350,17 @@ void SelectedMidiEvents::selectionStatusChanged (bool isNowSelected)
     }
 }
 
-void SelectedMidiEvents::moveEvents (TimeDuration deltaStart, TimeDuration deltaLength, int deltaNote)
+void SelectedMidiEvents::moveEvents (double deltaStart, double deltaLength, int deltaNote)
 {
     auto* undoManager = &getEdit().getUndoManager();
     auto notes = selectedNotes; // Use a copy in case any of them get deleted while moving
 
     juce::Array<MidiClip*> uniqueClips;
 
-    auto startTime = TimePosition::fromSeconds (std::numeric_limits<double>::max());
-    auto endTime   = TimePosition::fromSeconds (std::numeric_limits<double>::lowest());
+    double startTime = std::numeric_limits<double>::max();
+    double endTime   = std::numeric_limits<double>::lowest();
 
-    std::optional<BeatDuration> deltaBeat;
+    std::optional<double> deltaBeat;
 
     for (auto note : notes)
     {
@@ -377,8 +377,8 @@ void SelectedMidiEvents::moveEvents (TimeDuration deltaStart, TimeDuration delta
             }
 
             auto pos = note->getEditTimeRange (*clip);
-            auto newStartBeat = clip->getContentBeatAtTime (pos.getStart() + deltaStart) + toDuration (clip->getLoopStartBeats());
-            auto newEndBeat = clip->getContentBeatAtTime (pos.getEnd() + deltaStart + deltaLength) + toDuration (clip->getLoopStartBeats());
+            auto newStartBeat = clip->getContentBeatAtTime (pos.start + deltaStart) + clip->getLoopStartBeats();
+            auto newEndBeat = clip->getContentBeatAtTime (pos.end + deltaStart + deltaLength) + clip->getLoopStartBeats();
 
             if (! deltaBeat.has_value())
                 deltaBeat = newStartBeat - note->getBeatPosition();
@@ -392,7 +392,7 @@ void SelectedMidiEvents::moveEvents (TimeDuration deltaStart, TimeDuration delta
         if (auto clip = clipForEvent (sysexEvent))
         {
             auto deltaTime = sysexEvent->getEditTime (*clip) + deltaStart;
-            sysexEvent->setBeatPosition (clip->getContentBeatAtTime (deltaTime) + toDuration (clip->getLoopStartBeats()), undoManager);
+            sysexEvent->setBeatPosition (clip->getContentBeatAtTime (deltaTime) + clip->getLoopStartBeats(), undoManager);
         }
     }
 
@@ -412,19 +412,17 @@ void SelectedMidiEvents::moveEvents (TimeDuration deltaStart, TimeDuration delta
             endTime   = std::max (endTime, controllerEvent->getEditTime (clip));
 
             auto start = controllerEvent->getEditTime (clip);
-            auto newStartBeat = clip.getContentBeatAtTime (start + deltaStart) + toDuration (clip.getLoopStartBeats());
+            auto newStartBeat = clip.getContentBeatAtTime (start + deltaStart) + clip.getLoopStartBeats();
 
             if (! deltaBeat.has_value())
                 deltaBeat = newStartBeat - controllerEvent->getBeatPosition();
         }
 
-        moveControllerData (uniqueClips, &selectedControllers, *deltaBeat,
-                            startTime - TimeDuration::fromSeconds (0.001), endTime + TimeDuration::fromSeconds (0.001),
-                            false);
+        moveControllerData (uniqueClips, &selectedControllers, *deltaBeat, startTime - 0.001, endTime + 0.001, false);
     }
 }
 
-void SelectedMidiEvents::setNoteLengths (BeatDuration newLength)
+void SelectedMidiEvents::setNoteLengths (double newLength)
 {
     auto um = &getEdit().getUndoManager();
 
@@ -463,18 +461,18 @@ void SelectedMidiEvents::nudge (TimecodeSnapType snapType, int leftRight, int up
         {
             if (auto clip = clips[0])
             {
-                auto start = firstSelected->getEditStartTime (*clip);
+                double start = firstSelected->getEditStartTime (*clip);
 
-                auto snapped = leftRight < 0
-                                ? snapType.roundTimeDown (start - TimeDuration::fromSeconds (0.01), ed.tempoSequence)
-                                : snapType.roundTimeUp   (start + TimeDuration::fromSeconds (0.01), ed.tempoSequence);
+                double snapped = leftRight < 0
+                                    ? snapType.roundTimeDown (start - 0.01, ed.tempoSequence)
+                                    : snapType.roundTimeUp   (start + 0.01, ed.tempoSequence);
 
-                auto delta = ed.tempoSequence.toBeats (snapped)
-                                - ed.tempoSequence.toBeats (start);
+                double delta = ed.tempoSequence.timeToBeats (snapped)
+                                - ed.tempoSequence.timeToBeats (start);
 
                 juce::Array<MidiClip*> uniqueClips;
-                auto startTime = TimePosition::fromSeconds (std::numeric_limits<double>::max());
-                auto endTime   = TimePosition::fromSeconds (std::numeric_limits<double>::lowest());
+                double startTime = std::numeric_limits<double>::max();
+                double endTime   = std::numeric_limits<double>::lowest();
 
                 for (auto note : selectedNotes)
                 {
@@ -496,10 +494,10 @@ void SelectedMidiEvents::nudge (TimecodeSnapType snapType, int leftRight, int up
     }
 }
 
-TimeRange SelectedMidiEvents::getSelectedRange() const
+EditTimeRange SelectedMidiEvents::getSelectedRange() const
 {
     bool doneFirst = false;
-    TimeRange time;
+    EditTimeRange time;
 
     for (auto n : selectedNotes)
     {
@@ -556,7 +554,7 @@ void SelectedMidiEvents::setClips (juce::Array<MidiClip*> clips_)
 }
 
 void SelectedMidiEvents::moveControllerData (const juce::Array<MidiClip*>& clips, const juce::Array<MidiControllerEvent*>* onlyTheseEvents,
-                                             BeatDuration deltaBeats, TimePosition startTime, TimePosition endTime, bool makeCopy)
+                                             double deltaBeats, double startTime, double endTime, bool makeCopy)
 {
     for (auto c : clips)
     {
@@ -565,7 +563,6 @@ void SelectedMidiEvents::moveControllerData (const juce::Array<MidiClip*>& clips
         auto& seq = c->getSequence();
 
         juce::Array<MidiControllerEvent*> movedEvents;
-
         for (auto evt : seq.getControllerEvents())
         {
             if (evt->getEditTime (*c) >= startTime && evt->getEditTime (*c) < endTime)
@@ -581,8 +578,8 @@ void SelectedMidiEvents::moveControllerData (const juce::Array<MidiClip*>& clips
 
         auto& ts = c->edit.tempoSequence;
 
-        const auto startTimeAfter = ts.toTime (ts.toBeats (startTime) + deltaBeats);
-        const auto endTimeAfter   = ts.toTime (ts.toBeats (endTime) + deltaBeats);
+        double startTimeAfter = ts.beatsToTime (ts.timeToBeats (startTime) + deltaBeats);
+        double endTimeAfter   = ts.beatsToTime (ts.timeToBeats (endTime) + deltaBeats);
 
         for (auto evt : seq.getControllerEvents())
             if (onlyTheseEvents == nullptr || onlyTheseEvents->contains (evt))
@@ -594,4 +591,4 @@ void SelectedMidiEvents::moveControllerData (const juce::Array<MidiClip*>& clips
     }
 }
 
-}} // namespace tracktion { inline namespace engine
+}

@@ -21,7 +21,6 @@
 
 #include "choc_MIDI.h"
 #include "../containers/choc_Span.h"
-#include "../containers/choc_NonAllocatingStableSort.h"
 
 namespace choc::midi
 {
@@ -32,13 +31,10 @@ struct Sequence
     /// A time-stamped MIDI event
     struct Event
     {
-        /// The units for this time-stamp are unspecified, so you can use it for seconds,
-        /// frames, ticks, etc. as appropriate.
-        double timeStamp;
-
+        double timeInSeconds;
         Message message;
 
-        bool operator< (const Event& other) const    { return timeStamp < other.timeStamp; }
+        bool operator< (const Event& other) const    { return timeInSeconds < other.timeInSeconds; }
     };
 
     /// The raw events in the sequence. Although this vector is public to allow access,
@@ -98,21 +94,21 @@ struct Sequence
 //
 //==============================================================================
 
-inline void Sequence::sortEvents()  { choc::sorting::stable_sort (events.begin(), events.end()); }
+inline void Sequence::sortEvents()  { std::stable_sort (events.begin(), events.end()); }
 
 inline Sequence::Iterator::Iterator (const Sequence& s) : owner (s) {}
 
-inline void Sequence::Iterator::setTime (double newTimeStamp)
+inline void Sequence::Iterator::setTime (double newTime)
 {
     auto eventData = owner.events.data();
 
-    while (nextIndex != 0 && eventData[nextIndex - 1].timeStamp >= newTimeStamp)
+    while (nextIndex != 0 && eventData[nextIndex - 1].timeInSeconds >= newTime)
         --nextIndex;
 
-    while (nextIndex < owner.events.size() && eventData[nextIndex].timeStamp < newTimeStamp)
+    while (nextIndex < owner.events.size() && eventData[nextIndex].timeInSeconds < newTime)
         ++nextIndex;
 
-    currentTime = newTimeStamp;
+    currentTime = newTime;
 }
 
 inline choc::span<const Sequence::Event> Sequence::Iterator::readNextEvents (double duration)
@@ -124,7 +120,7 @@ inline choc::span<const Sequence::Event> Sequence::Iterator::readNextEvents (dou
     auto endTime = currentTime + duration;
     currentTime = endTime;
 
-    while (end < total && eventData[end].timeStamp < endTime)
+    while (end < total && eventData[end].timeInSeconds < endTime)
         ++end;
 
     nextIndex = end;

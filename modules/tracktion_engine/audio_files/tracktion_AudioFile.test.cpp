@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 #if TRACKTION_UNIT_TESTS
@@ -86,4 +86,5 @@ static AudioFileTests audioFileTests;
 
 #endif
 
-}} // namespace tracktion { inline namespace engine
+
+}

@@ -172,16 +172,8 @@ bool isUnicodeHighSurrogate (UnicodeChar codepoint);
 /// Checks whether a given codepoint is a low-surrogate
 bool isUnicodeLowSurrogate (UnicodeChar codepoint);
 
-struct SurrogatePair
-{
-    UnicodeChar high = 0, low = 0;
-};
-
-/// For a codepoint >= 0x10000, this will return a surrogate pair to represent it.
-SurrogatePair splitCodePointIntoSurrogatePair (UnicodeChar fullCodePoint);
-
 /// Combines a high and low surrogate into a single codepoint.
-UnicodeChar createUnicodeFromHighAndLowSurrogates (SurrogatePair);
+UnicodeChar createUnicodeFromHighAndLowSurrogates (UnicodeChar high, UnicodeChar low);
 
 /// Checks a UTF-8/CESU-8 string to see if it contains any surrogate pairs.
 /// If it does, then to use it as UTF-8 you'll probably need to run it through
@@ -198,7 +190,7 @@ bool isValidCESU8 (std::string_view utf8);
 
 /// Converts any 32-bit characters in this UTF-8 string to surrogate pairs, which makes
 /// the resulting string suitable for use at CESU-8.
-std::string convertUTF8ToCESU8 (UTF8Pointer);
+std::string convertUTF8ToCESU8 (UTF8Pointer utf8);
 
 
 //==============================================================================
@@ -561,12 +553,12 @@ inline void appendUTF8 (std::string& target, UnicodeChar unicodeChar)
 inline bool isUnicodeHighSurrogate (UnicodeChar codepoint)   { return codepoint >= 0xd800 && codepoint <= 0xdbff; }
 inline bool isUnicodeLowSurrogate  (UnicodeChar codepoint)   { return codepoint >= 0xdc00 && codepoint <= 0xdfff; }
 
-inline UnicodeChar createUnicodeFromHighAndLowSurrogates (SurrogatePair pair)
+inline UnicodeChar createUnicodeFromHighAndLowSurrogates (UnicodeChar codepoint1, UnicodeChar codepoint2)
 {
-    if (! isUnicodeHighSurrogate (pair.high))   return pair.high;
-    if (! isUnicodeLowSurrogate (pair.low))     return 0;
+    if (! isUnicodeHighSurrogate (codepoint1))   return codepoint1;
+    if (! isUnicodeLowSurrogate (codepoint2))    return 0;
 
-    return (pair.high << 10) + pair.low - 0x35fdc00u;
+    return (codepoint1 << 10) + codepoint2 - 0x35fdc00u;
 }
 
 inline bool containsSurrogatePairs (UTF8Pointer text)
@@ -592,21 +584,13 @@ inline std::string convertSurrogatePairsToUTF8 (UTF8Pointer text)
         auto c = text.popFirstChar();
 
         if (choc::text::isUnicodeHighSurrogate (c))
-            c = createUnicodeFromHighAndLowSurrogates ({ c, text.popFirstChar() });
+            c = createUnicodeFromHighAndLowSurrogates (c, text.popFirstChar());
 
         if (c == 0)
             return result;
 
         appendUTF8 (result, c);
     }
-}
-
-inline SurrogatePair splitCodePointIntoSurrogatePair (UnicodeChar fullCodePoint)
-{
-    CHOC_ASSERT (fullCodePoint >= 0x10000);
-
-    return { static_cast<UnicodeChar> (0xd800u + ((fullCodePoint - 0x10000u) >> 10)),
-             static_cast<UnicodeChar> (0xdc00u + (fullCodePoint & 0x3ffu)) };
 }
 
 inline bool isValidCESU8 (std::string_view utf8)
@@ -629,19 +613,18 @@ inline std::string convertUTF8ToCESU8 (UTF8Pointer utf8)
         if (c == 0)
             return result;
 
-        if (c < 128)
+        if (c >= 0x10000)
         {
-            result += (char) c;
+            appendUTF8 (result, static_cast<UnicodeChar> (0xd800u + ((c - 0x10000u) >> 10)));
+            appendUTF8 (result, static_cast<UnicodeChar> (0xdc00u + (c & 0x3ffu)));
         }
-        else if (c >= 0x10000)
+        else if (c >= 128)
         {
-            auto pair = splitCodePointIntoSurrogatePair (c);
-            appendUTF8 (result, pair.high);
-            appendUTF8 (result, pair.low);
+            appendUTF8 (result, c);
         }
         else
         {
-            appendUTF8 (result, c);
+            result += (char) c;
         }
     }
 }

@@ -8,13 +8,12 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 HostedMidiInputDeviceNode::HostedMidiInputDeviceNode (InputDeviceInstance& idi, MidiInputDevice&, MidiMessageArray::MPESourceID msi,
-                                                      tracktion::graph::PlayHeadState&, tracktion::ProcessState& ps)
-    : TracktionEngineNode (ps),
-      instance (idi),
+                                                      tracktion_graph::PlayHeadState&)
+    : instance (idi),
       midiSourceID (msi)
 {
 }
@@ -24,14 +23,14 @@ HostedMidiInputDeviceNode::~HostedMidiInputDeviceNode()
     instance.removeConsumer (this);
 }
 
-tracktion::graph::NodeProperties HostedMidiInputDeviceNode::getNodeProperties()
+tracktion_graph::NodeProperties HostedMidiInputDeviceNode::getNodeProperties()
 {
-    tracktion::graph::NodeProperties props;
+    tracktion_graph::NodeProperties props;
     props.hasMidi = true;
     return props;
 }
 
-void HostedMidiInputDeviceNode::prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo& info)
+void HostedMidiInputDeviceNode::prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo& info)
 {
     sampleRate = info.sampleRate;
 
@@ -47,10 +46,10 @@ void HostedMidiInputDeviceNode::process (ProcessContext& pc)
 {
     SCOPED_REALTIME_CHECK
 
-    const auto localTimeRange = tracktion::graph::sampleToTime (pc.referenceSampleRange, sampleRate).withStart (0.0);
+    const auto localTimeRange = tracktion_graph::sampleToTime (pc.referenceSampleRange, sampleRate).withStart (0.0);
     auto& destMidi = pc.buffers.midi;
 
-    const std::lock_guard<tracktion::graph::RealTimeSpinLock> lock (bufferMutex);
+    const std::lock_guard<tracktion_graph::RealTimeSpinLock> lock (bufferMutex);
 
     for (auto m : incomingMessages)
         if (localTimeRange.contains (m.getTimeStamp()))
@@ -66,11 +65,9 @@ void HostedMidiInputDeviceNode::process (ProcessContext& pc)
 
 void HostedMidiInputDeviceNode::handleIncomingMidiMessage (const juce::MidiMessage& message)
 {
-    const auto globalStreamTime = instance.edit.engine.getDeviceManager().getCurrentStreamTime();
-
-    // Timestamps will have global stream times so convert these to buffer offsets
-    const std::lock_guard<tracktion::graph::RealTimeSpinLock> lock (bufferMutex);
-    incomingMessages.addMidiMessage (message, message.getTimeStamp() - globalStreamTime, midiSourceID);
+    // Timestamps will be offsets form the next buffer in seconds
+    const std::lock_guard<tracktion_graph::RealTimeSpinLock> lock (bufferMutex);
+    incomingMessages.addMidiMessage (message, midiSourceID);
 }
 
-}} // namespace tracktion { inline namespace engine
+}

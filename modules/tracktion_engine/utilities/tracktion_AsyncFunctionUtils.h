@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /**
@@ -224,4 +224,4 @@ inline bool callBlocking (std::function<void()> f)
     return bf.hasFinished();
 }
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

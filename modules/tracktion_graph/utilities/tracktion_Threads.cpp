@@ -14,7 +14,7 @@
  #include <windows.h>
 #endif
 
-namespace tracktion { inline namespace graph
+namespace tracktion_graph
 {
 
 #ifdef _WIN32
@@ -60,4 +60,4 @@ bool setThreadPriority (std::thread& t, int priority)
     return setThreadPriority (t.native_handle(), priority);
 }
 
-}} // namespace tracktion_engine
+} // namespace tracktion_engine

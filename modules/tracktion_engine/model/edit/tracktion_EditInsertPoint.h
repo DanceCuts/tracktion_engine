@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /** */
@@ -18,24 +18,24 @@ public:
     EditInsertPoint (Edit&);
     virtual ~EditInsertPoint() = default;
 
-    void setNextInsertPoint (TimePosition, const juce::ReferenceCountedObjectPtr<Track>&);
-    void setNextInsertPoint (TimePosition);
+    void setNextInsertPoint (double time, const juce::ReferenceCountedObjectPtr<Track>&);
+    void setNextInsertPoint (double time);
     void setNextInsertPointAfterSelected();
     void lockInsertPoint (bool lock) noexcept;
 
     virtual void chooseInsertPoint (juce::ReferenceCountedObjectPtr<Track>&,
-                                    TimePosition& start, bool pasteAfterSelection, SelectionManager*);
+                                    double& start, bool pasteAfterSelection, SelectionManager*);
 
     void chooseInsertPoint (juce::ReferenceCountedObjectPtr<Track>&,
-                            TimePosition& start, bool pasteAfterSelection, SelectionManager*,
+                            double& start, bool pasteAfterSelection, SelectionManager*,
                             std::function<bool (Track&)> allowedTrackPredicate);
 
 protected:
     Edit& edit;
-    TimePosition nextInsertPointTime;
+    double nextInsertPointTime = 0;
     EditItemID nextInsertPointTrack;
     int lockInsertPointCount = 0;
     bool nextInsertIsAfterSelected = false;
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

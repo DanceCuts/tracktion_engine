@@ -10,7 +10,7 @@
 
 #pragma once
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 namespace
@@ -27,19 +27,30 @@ namespace
     }
 }
 
-//==============================================================================
 PluginNode::PluginNode (std::unique_ptr<Node> inputNode,
-                        tracktion::engine::Plugin::Ptr pluginToProcess,
+                        tracktion_engine::Plugin::Ptr pluginToProcess,
+                        double sampleRateToUse, int blockSizeToUse,
+                        std::shared_ptr<InputProvider> contextProvider)
+    : input (std::move (inputNode)),
+      plugin (std::move (pluginToProcess)),
+      audioRenderContextProvider (std::move (contextProvider))
+{
+    jassert (input != nullptr);
+    jassert (plugin != nullptr);
+    initialisePlugin (sampleRateToUse, blockSizeToUse);
+}
+
+PluginNode::PluginNode (std::unique_ptr<Node> inputNode,
+                        tracktion_engine::Plugin::Ptr pluginToProcess,
                         double sampleRateToUse, int blockSizeToUse,
                         const TrackMuteState* trackMuteStateToUse,
-                        ProcessState& processStateToUse,
+                        tracktion_graph::PlayHeadState& playHeadStateToUse,
                         bool rendering, bool canBalanceLatency,
                         int maxNumChannelsToUse)
-    : TracktionEngineNode (processStateToUse),
-      input (std::move (inputNode)),
+    : input (std::move (inputNode)),
       plugin (std::move (pluginToProcess)),
       trackMuteState (trackMuteStateToUse),
-      playHeadState (processStateToUse.playHeadState),
+      playHeadState (&playHeadStateToUse),
       isRendering (rendering),
       maxNumChannels (maxNumChannelsToUse),
       balanceLatency (canBalanceLatency)
@@ -56,7 +67,7 @@ PluginNode::~PluginNode()
 }
 
 //==============================================================================
-tracktion::graph::NodeProperties PluginNode::getNodeProperties()
+tracktion_graph::NodeProperties PluginNode::getNodeProperties()
 {
     auto props = input->getNodeProperties();
 
@@ -75,7 +86,7 @@ tracktion::graph::NodeProperties PluginNode::getNodeProperties()
     return props;
 }
 
-void PluginNode::prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo& info)
+void PluginNode::prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo& info)
 {
     juce::ignoreUnused (info);
     jassert (sampleRate == info.sampleRate);
@@ -83,7 +94,7 @@ void PluginNode::prepareToPlay (const tracktion::graph::PlaybackInitialisationIn
     auto props = getNodeProperties();
 
     if (props.latencyNumSamples > 0)
-        automationAdjustmentTime = TimeDuration::fromSamples (-props.latencyNumSamples, sampleRate);
+        automationAdjustmentTime = -tracktion_graph::sampleToTime (props.latencyNumSamples, sampleRate);
     
     if (shouldUseFineGrainAutomation (*plugin))
         subBlockSizeToUse = std::max (128, 128 * juce::roundToInt (info.sampleRate / 44100.0));
@@ -94,20 +105,29 @@ void PluginNode::prepareToPlay (const tracktion::graph::PlaybackInitialisationIn
     
     if (canProcessBypassed)
     {
-        replaceLatencyProcessorIfPossible (info.nodeGraphToReplace);
+        replaceLatencyProcessorIfPossible (info.rootNodeToReplace);
         
         if (! latencyProcessor)
         {
-            latencyProcessor = std::make_shared<tracktion::graph::LatencyProcessor>();
+            latencyProcessor = std::make_shared<tracktion_graph::LatencyProcessor>();
             latencyProcessor->setLatencyNumSamples (latencyNumSamples);
             latencyProcessor->prepareToPlay (info.sampleRate, info.blockSize, props.numberOfChannels);
         }
     }
 }
 
-void PluginNode::prefetchBlock (juce::Range<int64_t>)
+void PluginNode::prefetchBlock (juce::Range<int64_t> referenceSampleRange)
 {
-    plugin->prepareForNextBlock (getEditTimeRange().getStart());
+    if (playHeadState != nullptr)
+    {
+        auto& playHead = playHeadState->playHead;
+        const auto editTime = tracktion_graph::sampleToTime (playHead.referenceSamplePositionToTimelinePosition (referenceSampleRange.getStart()), sampleRate) + automationAdjustmentTime;
+        plugin->prepareForNextBlock (editTime);
+        
+        return;
+    }
+    
+    plugin->prepareForNextBlock (tracktion_graph::sampleToTime (referenceSampleRange.getStart(), sampleRate));
 }
 
 void PluginNode::process (ProcessContext& pc)
@@ -117,7 +137,6 @@ void PluginNode::process (ProcessContext& pc)
     
     auto& outputBuffers = pc.buffers;
     auto outputAudioView = outputBuffers.audio;
-    const auto blockNumSamples = inputAudioBlock.getNumFrames();
     jassert (inputAudioBlock.getNumFrames() == outputAudioView.getNumFrames());
 
     const auto numInputChannelsToCopy = std::min (inputAudioBlock.getNumChannels(),
@@ -134,20 +153,20 @@ void PluginNode::process (ProcessContext& pc)
     // Copy the inputs to the outputs, then process using the
     // output buffers as that will be the correct size
     if (numInputChannelsToCopy > 0)
-        tracktion::graph::copyIfNotAliased (outputAudioView.getFirstChannels (numInputChannelsToCopy),
-                                            inputAudioBlock.getFirstChannels (numInputChannelsToCopy));
+        tracktion_graph::copyIfNotAliased (outputAudioView.getFirstChannels (numInputChannelsToCopy),
+                                           inputAudioBlock.getFirstChannels (numInputChannelsToCopy));
     
     // Init block
-    auto subBlockSize = subBlockSizeToUse < 0 ? blockNumSamples
+    auto subBlockSize = subBlockSizeToUse < 0 ? inputAudioBlock.getNumFrames()
                                               : (choc::buffer::FrameCount) subBlockSizeToUse;
     
     choc::buffer::FrameCount numSamplesDone = 0;
-    auto numSamplesLeft = blockNumSamples;
+    auto numSamplesLeft = inputAudioBlock.getNumFrames();
     
     bool shouldProcessPlugin = canProcessBypassed || plugin->isEnabled();
     bool isAllNotesOff = inputBuffers.midi.isAllNotesOff;
     
-    if (playHeadState.didPlayheadJump())
+    if (playHeadState != nullptr && playHeadState->didPlayheadJump())
         isAllNotesOff = true;
     
     if (trackMuteState != nullptr)
@@ -160,8 +179,7 @@ void PluginNode::process (ProcessContext& pc)
                 isAllNotesOff = true;
         }
     }
-
-    const auto blockTimeRange = getEditTimeRange();
+    
     auto inputMidiIter = inputBuffers.midi.begin();
 
     // Process in blocks
@@ -169,35 +187,28 @@ void PluginNode::process (ProcessContext& pc)
     {
         auto numSamplesThisBlock = std::min (subBlockSize, numSamplesLeft);
 
-        auto outputAudioBuffer = toAudioBuffer (outputAudioView.getFrameRange (frameRangeWithStartAndLength (numSamplesDone, numSamplesThisBlock)));
+        auto outputAudioBuffer = tracktion_graph::toAudioBuffer (outputAudioView.getFrameRange (tracktion_graph::frameRangeWithStartAndLength (numSamplesDone, numSamplesThisBlock)));
         
-        const auto blockPropStart = (numSamplesDone / (double) blockNumSamples);
-        const auto blockPropEnd = ((numSamplesDone + numSamplesThisBlock) / (double) blockNumSamples);
-        const auto subBlockTimeRange = TimeRange (toPosition (blockTimeRange.getLength()) * blockPropStart,
-                                                  toPosition (blockTimeRange.getLength()) * blockPropEnd);
-
+        const auto subBlockTimeRange = tracktion_graph::sampleToTime (juce::Range<size_t>::withStartAndLength (numSamplesDone, numSamplesThisBlock), sampleRate);
+        
         midiMessageArray.clear();
         midiMessageArray.isAllNotesOff = isAllNotesOff;
         
         for (auto end = inputBuffers.midi.end(); inputMidiIter != end; ++inputMidiIter)
         {
             const auto timestamp = inputMidiIter->getTimeStamp();
-
-            // If the time range is empty, we need to pass through all the MIDI as it means the playhead is stopped
-            if (! subBlockTimeRange.isEmpty()
-                && timestamp >= subBlockTimeRange.getEnd().inSeconds())
-               break;
+            
+            if (timestamp >= subBlockTimeRange.getEnd())
+                break;
             
             midiMessageArray.addMidiMessage (*inputMidiIter,
-                                             timestamp - subBlockTimeRange.getStart().inSeconds(),
+                                             timestamp - subBlockTimeRange.getStart(),
                                              inputMidiIter->mpeSourceID);
         }
         
         // Process the plugin
         if (shouldProcessPlugin)
-            plugin->applyToBufferWithAutomation (getPluginRenderContext ({ blockTimeRange.getStart() + toDuration (subBlockTimeRange.getStart()),
-                                                                           blockTimeRange.getStart() + toDuration (subBlockTimeRange.getEnd()) },
-                                                                         outputAudioBuffer));
+            plugin->applyToBufferWithAutomation (getPluginRenderContext (pc.referenceSampleRange.getStart() + (int64_t) numSamplesDone, outputAudioBuffer));
 
         // Then copy the buffers to the outputs
         if (subBlockNum == 0)
@@ -220,7 +231,7 @@ void PluginNode::process (ProcessContext& pc)
         // A slightly better approach would be to crossfade between the processed and latency block to minimise any discrepancies
         if (plugin->isEnabled())
         {
-            auto numSamples = (int) blockNumSamples;
+            auto numSamples = (int) inputAudioBlock.getNumFrames();
             latencyProcessor->clearAudio (numSamples);
             latencyProcessor->clearMIDI (numSamples);
         }
@@ -232,7 +243,7 @@ void PluginNode::process (ProcessContext& pc)
             if (numInputChannelsToCopy > 0)
                 latencyProcessor->readAudioOverwriting (outputAudioView);
             
-            latencyProcessor->readMIDI (outputBuffers.midi, (int) blockNumSamples);
+            latencyProcessor->readMIDI (outputBuffers.midi, (int) inputAudioBlock.getNumFrames());
         }
     }
 }
@@ -240,51 +251,72 @@ void PluginNode::process (ProcessContext& pc)
 //==============================================================================
 void PluginNode::initialisePlugin (double sampleRateToUse, int blockSizeToUse)
 {
-    plugin->baseClassInitialise ({ TimePosition(), sampleRateToUse, blockSizeToUse });
+    plugin->baseClassInitialise ({ 0.0, sampleRateToUse, blockSizeToUse });
     isInitialised = true;
 
     sampleRate = sampleRateToUse;
     latencyNumSamples = juce::roundToInt (plugin->getLatencySeconds() * sampleRate);
 }
 
-PluginRenderContext PluginNode::getPluginRenderContext (TimeRange editTime, juce::AudioBuffer<float>& destBuffer)
+PluginRenderContext PluginNode::getPluginRenderContext (int64_t referenceSamplePosition, juce::AudioBuffer<float>& destBuffer)
 {
+    if (audioRenderContextProvider != nullptr)
+    {
+        tracktion_engine::PluginRenderContext rc (audioRenderContextProvider->getContext());
+        rc.destBuffer = &destBuffer;
+        rc.bufferStartSample = 0;
+        rc.bufferNumSamples = destBuffer.getNumSamples();
+        rc.bufferForMidiMessages = &midiMessageArray;
+        rc.midiBufferOffset = 0.0;
+        
+        return rc;
+    }
+
+    jassert (playHeadState != nullptr);
+    auto& playHead = playHeadState->playHead;
+    
     return { &destBuffer,
              juce::AudioChannelSet::canonicalChannelSet (destBuffer.getNumChannels()),
              0, destBuffer.getNumSamples(),
              &midiMessageArray, 0.0,
-             editTime + automationAdjustmentTime,
-             playHeadState.playHead.isPlaying(), playHeadState.playHead.isUserDragging(),
-             isRendering, canProcessBypassed };
+             tracktion_graph::sampleToTime (playHead.referenceSamplePositionToTimelinePosition (referenceSamplePosition), sampleRate) + automationAdjustmentTime,
+             playHead.isPlaying(), playHead.isUserDragging(), isRendering, canProcessBypassed };
 }
 
-void PluginNode::replaceLatencyProcessorIfPossible (NodeGraph* nodeGraphToReplace)
+void PluginNode::replaceLatencyProcessorIfPossible (Node* rootNodeToReplace)
 {
-    if (nodeGraphToReplace == nullptr)
+    if (rootNodeToReplace == nullptr)
         return;
     
-    const auto props = getNodeProperties();
-    const auto nodeIDToLookFor = props.nodeID;
+    auto props = getNodeProperties();
+    auto nodeIDToLookFor = props.nodeID;
     
     if (nodeIDToLookFor == 0)
         return;
 
-    if (auto oldNode = findNodeWithID<PluginNode> (*nodeGraphToReplace, nodeIDToLookFor))
+    auto visitor = [this, nodeIDToLookFor, props] (Node& node)
     {
-        if (! oldNode->latencyProcessor)
-            return;
-
-        if (! latencyProcessor)
+        if (auto other = dynamic_cast<PluginNode*> (&node))
         {
-            if (oldNode->latencyProcessor->hasConfiguration (latencyNumSamples, sampleRate, props.numberOfChannels))
-                latencyProcessor = oldNode->latencyProcessor;
+            if (other->getNodeProperties().nodeID == nodeIDToLookFor)
+            {
+                if (! other->latencyProcessor)
+                    return;
+                
+                if (! latencyProcessor)
+                {
+                    if (other->latencyProcessor->hasConfiguration (latencyNumSamples, sampleRate, props.numberOfChannels))
+                        latencyProcessor = other->latencyProcessor;
 
-            return;
+                    return;
+                }
+
+                if (latencyProcessor->hasSameConfigurationAs (*other->latencyProcessor))
+                    latencyProcessor = other->latencyProcessor;
+            }
         }
-
-        if (latencyProcessor->hasSameConfigurationAs (*oldNode->latencyProcessor))
-            latencyProcessor = oldNode->latencyProcessor;
-    }
+    };
+    visitNodes (*rootNodeToReplace, visitor, true);
 }
 
-}} // namespace tracktion { inline namespace engine
+}

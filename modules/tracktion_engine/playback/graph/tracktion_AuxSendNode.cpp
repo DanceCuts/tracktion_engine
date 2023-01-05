@@ -10,11 +10,11 @@
 
 #pragma once
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 AuxSendNode::AuxSendNode (std::unique_ptr<Node> inputNode, int busIDToUse,
-                          AuxSendPlugin& sourceSendPlugin, tracktion::graph::PlayHeadState& phs,
+                          AuxSendPlugin& sourceSendPlugin, tracktion_graph::PlayHeadState& phs,
                           const TrackMuteState* trackMuteState)
     : SendNode (std::move (inputNode), busIDToUse,
                 [&sourceSendPlugin, trackMuteState]
@@ -24,11 +24,7 @@ AuxSendNode::AuxSendNode (std::unique_ptr<Node> inputNode, int busIDToUse,
                         && ! trackMuteState->shouldTrackContentsBeProcessed())
                        return 0.0f;
 
-                    auto gain = volumeFaderPositionToGain (sourceSendPlugin.gain->getCurrentValue());
-                    if (sourceSendPlugin.invertPhase)
-                        gain *= -1.0f;
-
-                    return gain;
+                    return volumeFaderPositionToGain (sourceSendPlugin.gain->getCurrentValue());
                }),
       playHeadState (phs),
       pluginPtr (sourceSendPlugin),
@@ -38,12 +34,12 @@ AuxSendNode::AuxSendNode (std::unique_ptr<Node> inputNode, int busIDToUse,
 }
 
 //==============================================================================
-void AuxSendNode::prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo& info)
+void AuxSendNode::prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo& info)
 {
     sampleRate = info.sampleRate;
     
     if (auto props = getNodeProperties(); props.latencyNumSamples > 0)
-        automationAdjustmentTime = TimeDuration::fromSamples (-props.latencyNumSamples, sampleRate);
+        automationAdjustmentTime = -tracktion_graph::sampleToTime (props.latencyNumSamples, sampleRate);
 }
 
 void AuxSendNode::process (ProcessContext& pc)
@@ -52,11 +48,11 @@ void AuxSendNode::process (ProcessContext& pc)
         && sendPlugin.edit.getAutomationRecordManager().isReadingAutomation())
     {
         const auto editSamplePos = playHeadState.playHead.referenceSamplePositionToTimelinePosition (pc.referenceSampleRange.getStart());
-        const auto editTime = TimePosition::fromSamples (editSamplePos, sampleRate) + automationAdjustmentTime;
+        const auto editTime = tracktion_graph::sampleToTime (editSamplePos, sampleRate) + automationAdjustmentTime;
         sendPlugin.updateParameterStreams (editTime);
     }
     
     SendNode::process (pc);
 }
 
-}} // namespace tracktion { inline namespace engine
+}

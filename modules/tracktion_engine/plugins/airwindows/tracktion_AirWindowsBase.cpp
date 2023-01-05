@@ -7,7 +7,7 @@
 */
 
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 #define __audioeffect__
@@ -102,4 +102,4 @@ protected:
     double getSampleRate()              { return callback->getSampleRate(); }
 };
 
-}} // namespace tracktion { inline namespace engine
+}

@@ -19,7 +19,6 @@
 #ifndef CHOC_OSCILLATOR_HEADER_INCLUDED
 #define CHOC_OSCILLATOR_HEADER_INCLUDED
 
-#include <cmath>
 #include "choc_SampleBuffers.h"
 
 /**
@@ -113,7 +112,7 @@ private:
 //==============================================================================
 /// Fills a choc::buffer::BufferView with a generated oscillator waveform
 template <typename OscillatorType, typename BufferView>
-void render (BufferView&& targetView, OscillatorType& oscillator)
+void render (BufferView& targetView, OscillatorType& oscillator)
 {
     using TargetType = typename std::remove_reference<BufferView>::type::Sample;
     setAllFrames (targetView, [&] { return static_cast<TargetType> (oscillator.getSample()); });
@@ -121,7 +120,7 @@ void render (BufferView&& targetView, OscillatorType& oscillator)
 
 /// Fills a choc::buffer::BufferView with a generated oscillator waveform
 template <typename OscillatorType, typename BufferView>
-void render (BufferView&& targetView, double frequency, double sampleRate)
+void render (BufferView& targetView, double frequency, double sampleRate)
 {
     OscillatorType osc;
     osc.setFrequency (static_cast<typename OscillatorType::SampleType> (frequency),

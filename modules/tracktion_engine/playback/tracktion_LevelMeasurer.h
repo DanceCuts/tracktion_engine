@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 struct DbTimePair
@@ -126,4 +126,4 @@ public:
     juce::AudioBuffer<float> sumBuffer;
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

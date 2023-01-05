@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 struct ActiveNoteList
@@ -38,16 +38,6 @@ struct ActiveNoteList
             activeChannels[note] &= ~(1u << (channel - 1));
     }
 
-    bool areAnyNotesActive() const noexcept
-    {
-        juce::uint16 result = 0;
-
-        for (auto a : activeChannels)
-            result |= a;
-
-        return result > 0;
-    }
-
     template <typename Visitor>
     void iterate (Visitor&& v) const noexcept
     {
@@ -63,4 +53,4 @@ struct ActiveNoteList
     }
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

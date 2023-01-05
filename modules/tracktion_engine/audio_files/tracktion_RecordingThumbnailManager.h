@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 class RecordingThumbnailManager
@@ -22,7 +22,7 @@ public:
         TracktionThumbnail thumb;
         juce::File file;
         const HashCode hash;
-        TimePosition punchInTime;
+        double punchInTime = 0;
 
         ~Thumbnail()
         {
@@ -81,4 +81,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (RecordingThumbnailManager)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

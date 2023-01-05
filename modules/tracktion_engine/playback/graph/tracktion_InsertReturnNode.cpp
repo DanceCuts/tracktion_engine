@@ -8,18 +8,18 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
 //==============================================================================
-InsertReturnNode::InsertReturnNode (InsertPlugin& ip, std::unique_ptr<tracktion::graph::Node> inputNode)
+InsertReturnNode::InsertReturnNode (InsertPlugin& ip, std::unique_ptr<tracktion_graph::Node> inputNode)
     : owner (ip), plugin (&ip), input (std::move (inputNode))
 {
 }
 
 //==============================================================================
-tracktion::graph::NodeProperties InsertReturnNode::getNodeProperties()
+tracktion_graph::NodeProperties InsertReturnNode::getNodeProperties()
 {
     auto props = input->getNodeProperties();
     props.nodeID = 0;
@@ -27,12 +27,12 @@ tracktion::graph::NodeProperties InsertReturnNode::getNodeProperties()
     return props;
 }
 
-std::vector<tracktion::graph::Node*> InsertReturnNode::getDirectInputNodes()
+std::vector<tracktion_graph::Node*> InsertReturnNode::getDirectInputNodes()
 {
     return { input.get() };
 }
 
-void InsertReturnNode::prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo&)
+void InsertReturnNode::prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo&)
 {
 }
 
@@ -47,4 +47,4 @@ void InsertReturnNode::process (ProcessContext&)
     owner.fillReturnBuffer (&sourceBuffers.audio, &sourceBuffers.midi);
 }
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

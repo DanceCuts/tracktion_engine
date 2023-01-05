@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 class TracktionThumbnail    : public juce::AudioThumbnailBase
@@ -52,10 +52,10 @@ public:
                                float& minValue, float& maxValue) const noexcept override;
 
     void drawChannel (juce::Graphics&, juce::Rectangle<int> area, bool useHighRes,
-                      TimeRange time, int channelNum, float verticalZoomFactor);
+                      EditTimeRange time, int channelNum, float verticalZoomFactor);
 
     void drawChannels (juce::Graphics&, juce::Rectangle<int> area, bool useHighRes,
-                       TimeRange time, float verticalZoomFactor);
+                       EditTimeRange time, float verticalZoomFactor);
 
 private:
     //==============================================================================
@@ -88,4 +88,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TracktionThumbnail)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

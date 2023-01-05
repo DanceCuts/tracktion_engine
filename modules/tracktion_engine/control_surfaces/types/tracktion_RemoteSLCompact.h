@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 class RemoteSLCompact  : public NovationRemoteSl
@@ -27,4 +27,4 @@ public:
     bool isPluginSelected (Plugin*) override;
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

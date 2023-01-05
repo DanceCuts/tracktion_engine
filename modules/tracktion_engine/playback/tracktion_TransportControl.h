@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /** Moves the transport to the start of the selected objects. */
@@ -72,7 +72,7 @@ public:
     void play (bool justSendMMCIfEnabled);
 
     /** Plays a section of an Edit then stops playback, useful for previewing clips. */
-    void playSectionAndReset (TimeRange rangeToPlay);
+    void playSectionAndReset (EditTimeRange rangeToPlay);
 
     /** Starts recording. This will also start playback if stopped.
         @param justSendMMCIfEnabled             If this is true, playback isn't actually started,
@@ -132,7 +132,7 @@ public:
     bool isStopping() const;
 
     /** Returns the time when the transport was started. */
-    TimePosition getTimeWhenStarted() const;
+    double getTimeWhenStarted() const;
 
     //==============================================================================
     /** Returns the current transport position.
@@ -141,11 +141,9 @@ public:
         @see EditPlaybackContext::getAudibleTimelineTime, EditPlaybackContext::getLatencySamples
     */
     double getCurrentPosition() const;
-    TimePosition getPosition() const;
-
+    
     /** Sets a new transport position. */
     void setCurrentPosition (double time);
-    void setPosition (TimePosition);
 
     /** Signifies a scrub-drag operation has started/stopped.
         While dragging, a short section of the play position is looped repeatedly.
@@ -164,22 +162,22 @@ public:
 
     //==============================================================================
     /** Sets the loop in position. */
-    void setLoopIn (TimePosition);
+    void setLoopIn (double);
 
     /** Sets a loop out position. */
-    void setLoopOut (TimePosition);
+    void setLoopOut (double);
 
     /** Sets a loop point 1 position. */
-    void setLoopPoint1 (TimePosition);
+    void setLoopPoint1 (double);
 
     /** Sets a loop point 2 position. */
-    void setLoopPoint2 (TimePosition);
+    void setLoopPoint2 (double);
 
     /** Sets the loop points from a given range. */
-    void setLoopRange (TimeRange);
+    void setLoopRange (EditTimeRange range);
 
     /** Returns the loop range. The loop range is between the two loop points. */
-    TimeRange getLoopRange() const noexcept;
+    EditTimeRange getLoopRange() const noexcept;
 
     /** Sets a snap type to use. */
     void setSnapType (TimecodeSnapType);
@@ -319,7 +317,7 @@ public:
         virtual void setAllLevelMetersActive (bool metersBecameInactive) = 0;
 
         /** Should set a new position for any playing video. */
-        virtual void setVideoPosition (TimePosition, bool forceJump) = 0;
+        virtual void setVideoPosition (double time, bool forceJump) = 0;
         
         /** Should start video playback. */
         virtual void startVideo() = 0;
@@ -348,9 +346,7 @@ public:
     juce::ValueTree state;  /**< The state of this transport. */
 
     /** @internal. */
-    juce::CachedValue<TimePosition> position;
-    juce::CachedValue<TimePosition> loopPoint1, loopPoint2;
-    juce::CachedValue<TimeDuration> scrubInterval;
+    juce::CachedValue<double> position, loopPoint1, loopPoint2, scrubInterval;
     /** @internal. */
     juce::CachedValue<bool> snapToTimecode, looping;
 
@@ -422,4 +418,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TransportControl)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

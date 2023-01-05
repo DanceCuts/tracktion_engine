@@ -8,16 +8,16 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
 //==============================================================================
-LiveMidiInjectingNode::LiveMidiInjectingNode (AudioTrack& at, std::unique_ptr<tracktion::graph::Node> inputNode)
+LiveMidiInjectingNode::LiveMidiInjectingNode (AudioTrack& at, std::unique_ptr<tracktion_graph::Node> inputNode)
     : track (at), input (std::move (inputNode))
 {
-    setOptimisations ({ tracktion::graph::ClearBuffers::no,
-                        tracktion::graph::AllocateAudioBuffer::no });
+    setOptimisations ({ tracktion_graph::ClearBuffers::no,
+                        tracktion_graph::AllocateAudioBuffer::no });
 
     track->addListener (this);
 }
@@ -28,31 +28,44 @@ LiveMidiInjectingNode::~LiveMidiInjectingNode()
 }
 
 //==============================================================================
-tracktion::graph::NodeProperties LiveMidiInjectingNode::getNodeProperties()
+tracktion_graph::NodeProperties LiveMidiInjectingNode::getNodeProperties()
 {
     auto props = input->getNodeProperties();
     props.hasMidi = true;
-    hash_combine (props.nodeID, track->itemID.getRawID());
+    tracktion_graph::hash_combine (props.nodeID, track->itemID.getRawID());
     
     return props;
 }
 
-std::vector<tracktion::graph::Node*> LiveMidiInjectingNode::getDirectInputNodes()
+std::vector<tracktion_graph::Node*> LiveMidiInjectingNode::getDirectInputNodes()
 {
     return { input.get() };
 }
 
-void LiveMidiInjectingNode::prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo& info)
+void LiveMidiInjectingNode::prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo& info)
 {
-    if (auto oldNode = findNodeWithIDIfNonZero<LiveMidiInjectingNode> (info.nodeGraphToReplace, getNodeProperties().nodeID))
+    if (info.rootNodeToReplace == nullptr)
+        return;
+    
+    auto nodeIDToLookFor = getNodeProperties().nodeID;
+    
+    if (nodeIDToLookFor == 0)
+        return;
+
+    auto visitor = [this, nodeIDToLookFor] (Node& node)
     {
-        if (oldNode->track == track)
+        if (auto other = dynamic_cast<LiveMidiInjectingNode*> (&node))
         {
-            const juce::ScopedLock sl2 (oldNode->liveMidiLock);
-            liveMidiMessages.swapWith (oldNode->liveMidiMessages);
-            midiSourceID = oldNode->midiSourceID;
+            if (other->getNodeProperties().nodeID == nodeIDToLookFor
+                && other->track == track)
+            {
+                const juce::ScopedLock sl2 (other->liveMidiLock);
+                liveMidiMessages.swapWith (other->liveMidiMessages);
+                midiSourceID = other->midiSourceID;
+            }
         }
-    }
+    };
+    visitNodes (*info.rootNodeToReplace, visitor, true);
 }
 
 bool LiveMidiInjectingNode::isReadyToProcess()
@@ -96,4 +109,4 @@ void LiveMidiInjectingNode::injectLiveMidiMessage (AudioTrack& at, const MidiMes
     wasUsed = true;
 }
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

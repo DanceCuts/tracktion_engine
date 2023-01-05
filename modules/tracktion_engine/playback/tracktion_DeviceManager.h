@@ -8,36 +8,11 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 class HostedAudioDeviceInterface;
 
-//==============================================================================
-//==============================================================================
-/**
-    Subclass of an AudioDeviceManager which can be used to avoid adding the
-    system audio devices in plugin builds.
-    @see EngineBehaviour::addSystemAudioIODeviceTypes
-*/
-class TracktionEngineAudioDeviceManager : public juce::AudioDeviceManager
-{
-public:
-    /** Creates a TracktionEngineAudioDeviceManager. */
-    TracktionEngineAudioDeviceManager (Engine&);
-
-    /** EngineBehaviour::addSystemAudioIODeviceTypes can be used to avoid creating
-        system devices in plugin or parsing builds.
-    */
-    void createAudioDeviceTypes (juce::OwnedArray<juce::AudioIODeviceType>&) override;
-
-private:
-    Engine& engine;
-};
-
-
-//==============================================================================
-//==============================================================================
 /**
 */
 class DeviceManager     : public juce::ChangeBroadcaster,
@@ -98,7 +73,6 @@ public:
     int getBitDepth() const;
     int getBlockSize() const;
     double getBlockSizeMs() const;
-    TimeDuration getBlockLength() const;
 
     int getNumWaveOutDevices() const                            { return waveOutputs.size(); }
     WaveOutputDevice* getWaveOutDevice (int index) const        { return waveOutputs[index]; }
@@ -177,10 +151,8 @@ public:
 
     double getOutputLatencySeconds() const;
 
-    Engine& engine;
-
     std::unique_ptr<HostedAudioDeviceInterface> hostedAudioDeviceInterface;
-    TracktionEngineAudioDeviceManager deviceManager { engine };
+    juce::AudioDeviceManager deviceManager;
 
     juce::OwnedArray<MidiInputDevice, juce::CriticalSection> midiInputs;
     juce::OwnedArray<MidiOutputDevice> midiOutputs;
@@ -201,19 +173,14 @@ public:
         DeviceManager& dm;
     };
 
-    /** Sets a global processor to be applied to the output.
-        This can be used to set a limiter or similar on the whole ouput.
-        It shouldn't be used for musical effects.
-    */
     void setGlobalOutputAudioProcessor (juce::AudioProcessor*);
-
-    /** Returns a previously set globalOutputAudioProcessor. */
     juce::AudioProcessor* getGlobalOutputAudioProcessor() const { return globalOutputAudioProcessor.get(); }
 
-    /** If this is set, it will get called (possibly on the midi thread) when incoming
-        messages seem to be unused. May want to use it to warn the user.
-    */
-    std::function<void (InputDevice*)> warnOfWastedMidiMessagesFunction;
+    // If this is set, it will get called (possibly on the midi thread) when incoming
+    // messages seem to be unused. May want to use it to warn the user.
+    std::function<void(InputDevice*)> warnOfWastedMidiMessagesFunction;
+
+    Engine& engine;
 
 private:
     struct WaveDeviceList;
@@ -255,14 +222,13 @@ private:
 
     void changeListenerCallback (juce::ChangeBroadcaster*) override;
 
-    void audioDeviceIOCallbackWithContext (const float* const* inputChannelData, int totalNumInputChannels,
-                                           float* const* outputChannelData, int totalNumOutputChannels, int numSamples,
-                                           const juce::AudioIODeviceCallbackContext&) override;
+    void audioDeviceIOCallback (const float** inputChannelData, int totalNumInputChannels,
+                                float** outputChannelData, int totalNumOutputChannels, int numSamples) override;
     void audioDeviceAboutToStart (juce::AudioIODevice*) override;
     void audioDeviceStopped() override;
 
-    void audioDeviceIOCallbackInternal (const float* const* inputChannelData, int numInputChannels,
-                                        float* const* outputChannelData, int totalNumOutputChannels,
+    void audioDeviceIOCallbackInternal (const float** inputChannelData, int numInputChannels,
+                                        float** outputChannelData, int totalNumOutputChannels,
                                         int numSamples);
 
     //==============================================================================
@@ -277,4 +243,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (DeviceManager)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

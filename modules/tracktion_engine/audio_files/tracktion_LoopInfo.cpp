@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 LoopInfo::LoopInfo (Engine& e)
@@ -430,4 +430,4 @@ void LoopInfo::init (const juce::AudioFormatReader* afr, const juce::AudioFormat
     initialiseMissingProps();
 }
 
-}} // namespace tracktion { inline namespace engine
+}

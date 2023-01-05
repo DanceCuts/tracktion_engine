@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -51,7 +51,7 @@ struct AudioFileUtils
     static SampleCount copySectionToNewFile (Engine& e,
                                              const juce::File& sourceFile,
                                              const juce::File& destFile,
-                                             TimeRange range);
+                                             EditTimeRange range);
 
     static void addBWAVStartToMetadata (juce::StringPairArray& metadata, SampleCount start);
 
@@ -188,4 +188,4 @@ struct AudioFileUtils
     };
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

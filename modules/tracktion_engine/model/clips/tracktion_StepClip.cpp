@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 struct StepClip::ChannelList  : public ValueTreeObjectList<StepClip::Channel>
@@ -210,15 +210,15 @@ juce::String StepClip::getSelectableDescription()
 }
 
 //==============================================================================
-juce::Array<BeatPosition> StepClip::getBeatTimesOfPatternStarts() const
+juce::Array<double> StepClip::getBeatTimesOfPatternStarts() const
 {
-    juce::Array<BeatPosition> starts;
+    juce::Array<double> starts;
 
     auto& tempoSequence = edit.tempoSequence;
     auto pos = getPosition();
 
-    auto patternStartBeats  = tempoSequence.toBeats (pos.getStartOfSource());
-    auto endBeat            = tempoSequence.toBeats (pos.getEnd());
+    auto patternStartBeats  = tempoSequence.timeToBeats (pos.getStartOfSource());
+    auto endBeat            = tempoSequence.timeToBeats (pos.getEnd());
     auto ratio              = 1.0 / speedRatio;
     bool repeatSeq          = repeatSequence;
 
@@ -226,15 +226,15 @@ juce::Array<BeatPosition> StepClip::getBeatTimesOfPatternStarts() const
     {
         starts.add (patternStartBeats);
 
-        auto numBeats = BeatDuration::fromBeats (4.0);
+        double numBeats = 4.0;
 
         if (auto p = getPatternInstance (i, repeatSeq))
         {
             auto pattern = p->getPattern();
-            numBeats = pattern.getNoteLength() * pattern.getNumNotes() * ratio;
+            numBeats = pattern.getNumNotes() * (pattern.getNoteLength() * ratio);
         }
 
-        patternStartBeats = patternStartBeats + numBeats;
+        patternStartBeats += numBeats;
 
         if (patternStartBeats >= endBeat)
             break;
@@ -243,26 +243,26 @@ juce::Array<BeatPosition> StepClip::getBeatTimesOfPatternStarts() const
     return starts;
 }
 
-BeatPosition StepClip::getStartBeatOf (PatternInstance* instance)
+double StepClip::getStartBeatOf (PatternInstance* instance)
 {
     if (instance == nullptr
         || (instance != nullptr && ! patternInstanceList.contains (instance)))
     {
         jassertfalse;
-        return BeatPosition();
+        return 0.0;
     }
 
     auto index = patternInstanceList.indexOf (instance);
     return getBeatTimesOfPatternStarts()[index];
 }
 
-BeatPosition StepClip::getEndBeatOf (PatternInstance* instance)
+double StepClip::getEndBeatOf (PatternInstance* instance)
 {
     if (instance == nullptr
         || (instance != nullptr && ! patternInstanceList.contains (instance)))
     {
         jassertfalse;
-        return BeatPosition();
+        return 0.0;
     }
 
     auto index = patternInstanceList.indexOf (instance) + 1;
@@ -273,24 +273,24 @@ void StepClip::resizeClipForPatternInstances()
 {
     if (patternInstanceList.getLast().get() != nullptr)
     {
-        auto end = -getOffsetInBeats();
+        double end = -getOffsetInBeats();
 
         auto ratio              = 1.0 / speedRatio;
 
         for (auto p : patternInstanceList)
         {
             auto pattern = p->getPattern();
-            end = end + pattern.getNoteLength() * pattern.getNumNotes() * ratio;
+            end += pattern.getNumNotes() * (pattern.getNoteLength() * ratio);
         }
 
         if (end > getLengthInBeats())
         {
             auto& ts = edit.tempoSequence;
             auto pos = getPosition();
-            auto startBeat = ts.toBeats (pos.getStart());
+            auto startBeat = ts.timeToBeats (pos.getStart());
             auto endBeat = startBeat + end;
 
-            setEnd (ts.toTime (endBeat), false);
+            setEnd (ts.beatsToTime (endBeat), false);
         }
     }
 }
@@ -302,12 +302,13 @@ int StepClip::getBeatsPerBar()
 
 void StepClip::generateMidiSequenceForChannels (juce::MidiMessageSequence& result,
                                                 bool convertToSeconds, const Pattern& pattern,
-                                                BeatPosition startBeat, BeatPosition clipStartBeat,
-                                                BeatPosition clipEndBeat, const TempoSequence& tempoSequence)
+                                                double startBeat, double clipStartBeat,
+                                                double clipEndBeat, const TempoSequence& tempoSequence)
 {
     CRASH_TRACER
 
     auto pos = getPosition();
+    auto clipStartTime = convertToSeconds ? pos.getStart() : clipStartBeat;
     auto ratio = 1.0 / speedRatio;
 
     auto& gtm = edit.engine.getGrooveTemplateManager();
@@ -352,37 +353,29 @@ void StepClip::generateMidiSequenceForChannels (juce::MidiMessageSequence& resul
                     jassert (gate > 0.0);
 
                     auto start  = std::max (clipStartBeat, startBeat);
-                    auto end    = std::min (clipEndBeat - BeatDuration::fromBeats (0.0001), beatEnd);
+                    auto end    = std::min (clipEndBeat - 0.0001, beatEnd);
 
-                    double eventStart = start.inBeats();
-                    double eventEnd = end.inBeats();
-
-                    if (end > (start + BeatDuration::fromBeats (0.0001)))
+                    if (end > (start + 0.0001))
                     {
                         auto& c = *getChannels().getUnchecked (f);
 
                         if (convertToSeconds)
                         {
-                            const auto startTime = tempoSequence.toTime (start) - toDuration (pos.getStart());
-                            const auto endTime = tempoSequence.toTime (end) - toDuration (pos.getStart());
+                            start = tempoSequence.beatsToTime (start) - clipStartTime;
+                            end = tempoSequence.beatsToTime (end) - clipStartTime;
 
                             if (auto gt = gtm.getTemplateByName (c.grooveTemplate))
                             {
-                                eventStart = gt->editTimeToGroovyTime (startTime, c.grooveStrength, edit).inSeconds();
-                                eventEnd = gt->editTimeToGroovyTime (endTime, c.grooveStrength, edit).inSeconds();
-                            }
-                            else
-                            {
-                                eventStart = startTime.inSeconds();
-                                eventEnd = endTime.inSeconds();
+                                start = gt->editTimeToGroovyTime (start, c.grooveStrength, edit);
+                                end = gt->editTimeToGroovyTime (end, c.grooveStrength, edit);
                             }
                         }
                         else
                         {
                             if (auto gt = gtm.getTemplateByName (c.grooveTemplate))
                             {
-                                eventStart = gt->beatsTimeToGroovyTime (start, c.grooveStrength).inBeats();
-                                eventEnd = gt->beatsTimeToGroovyTime (end, c.grooveStrength).inBeats();
+                                start = gt->beatsTimeToGroovyTime (start, c.grooveStrength);
+                                end = gt->beatsTimeToGroovyTime (end, c.grooveStrength);
                             }
                         }
 
@@ -390,8 +383,8 @@ void StepClip::generateMidiSequenceForChannels (juce::MidiMessageSequence& resul
                         const float vel = cache->getVelocity (i) / 127.0f;
                         jassert (c.channel.get().isValid());
                         auto chan = c.channel.get().getChannelNumber();
-                        result.addEvent (juce::MidiMessage::noteOn  (chan, c.noteNumber, vel * channelVelScale), eventStart);
-                        result.addEvent (juce::MidiMessage::noteOff (chan, c.noteNumber, (uint8_t) juce::jlimit (0, 127, c.noteValue.get())), eventEnd);
+                        result.addEvent (juce::MidiMessage::noteOn  (chan, c.noteNumber, vel * channelVelScale), start);
+                        result.addEvent (juce::MidiMessage::noteOff (chan, c.noteNumber, (uint8_t) juce::jlimit (0, 127, c.noteValue.get())), end);
                     }
                 }
             }
@@ -414,8 +407,8 @@ void StepClip::generateMidiSequence (juce::MidiMessageSequence& result,
     auto& tempoSequence = edit.tempoSequence;
     auto pos = getPosition();
 
-    auto clipStartBeat = tempoSequence.toBeats (pos.getStart());
-    auto clipEndBeat   = tempoSequence.toBeats (pos.getEnd());
+    auto clipStartBeat = tempoSequence.timeToBeats (pos.getStart());
+    auto clipEndBeat   = tempoSequence.timeToBeats (pos.getEnd());
     bool repeatSeq = repeatSequence;
     auto starts = getBeatTimesOfPatternStarts();
 
@@ -433,7 +426,7 @@ void StepClip::generateMidiSequence (juce::MidiMessageSequence& result,
 
             if (instance != nullptr)
             {
-                result.addTimeToMessages (-tempoSequence.toTime (clipStartBeat + toDuration (startBeat)).inSeconds());
+                result.addTimeToMessages (-tempoSequence.beatsToTime (clipStartBeat + startBeat));
                 break;
             }
         }
@@ -672,4 +665,4 @@ void StepClip::setCell (int patternIndex, int channelIndex,
     }
 }
 
-}} // namespace tracktion { inline namespace engine
+}

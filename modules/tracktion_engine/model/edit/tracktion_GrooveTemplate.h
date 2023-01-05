@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -23,7 +23,6 @@ public:
     ~GrooveTemplate();
 
     const GrooveTemplate& operator= (const GrooveTemplate&);
-    bool operator== (const GrooveTemplate&) const;
 
     //==============================================================================
     bool isEmpty() const;
@@ -32,10 +31,10 @@ public:
 
     //==============================================================================
     /** Apply this groove to a time, in beats */
-    BeatPosition beatsTimeToGroovyTime (BeatPosition beatsTime, float strength) const;
+    double beatsTimeToGroovyTime (double beatsTime, float strength) const;
 
     /** Apply this groove to a time, in seconds */
-    TimePosition editTimeToGroovyTime (TimePosition editTime, float strength, Edit& edit) const;
+    double editTimeToGroovyTime (double editTime, float strength, Edit& edit) const;
 
     //==============================================================================
     const juce::String& getName() const                     { return name; }
@@ -110,4 +109,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (GrooveTemplateManager)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

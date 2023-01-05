@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 struct ExternalControllerManager::EditTreeWatcher   : private juce::ValueTree::Listener,
@@ -613,13 +613,13 @@ void ExternalControllerManager::clickChanged (bool isOn)
     FOR_EACH_ACTIVE_DEVICE (clickChanged (isOn));
 }
 
-void ExternalControllerManager::editPositionChanged (Edit* ed, TimePosition newCursorPosition)
+void ExternalControllerManager::editPositionChanged (Edit* ed, double newCursorPosition)
 {
     if (ed != nullptr)
     {
         CRASH_TRACER
         juce::String parts[4];
-        ed->getTimecodeFormat().getPartStrings (TimecodeDuration::fromSecondsOnly (toDuration (newCursorPosition)),
+        ed->getTimecodeFormat().getPartStrings (TimecodeDuration::fromSecondsOnly (newCursorPosition),
                                                 ed->tempoSequence,
                                                 false, parts);
 
@@ -1005,4 +1005,4 @@ void ExternalControllerManager::refreshXTOrder()
    #endif
 }
 
-}} // namespace tracktion { inline namespace engine
+}

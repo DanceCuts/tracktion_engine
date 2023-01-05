@@ -93,9 +93,6 @@ struct CoutLogger : public Logger
 {
     void logMessage (const String& message) override
     {
-        static tracktion::RealTimeSpinLock mutex;
-
-        const std::scoped_lock lock (mutex);
         std::cout << message << "\n";
     }
 };
@@ -105,7 +102,7 @@ struct CoutLogger : public Logger
 namespace JUnit
 {
     /** Creates a JUnit formatted ValueTree from a UnitTestRunner's results. */
-    inline ValueTree createJUnitResultValueTree (const UnitTestRunner::TestResult& result)
+    ValueTree createJUnitResultValueTree (const UnitTestRunner::TestResult& result)
     {
         ValueTree testcase ("testcase");
         testcase.setProperty ("classname", result.unitTestName, nullptr);
@@ -118,7 +115,7 @@ namespace JUnit
     }
 
     /** Creates a JUnit formatted 'testsuite' ValueTree from a UnitTestRunner's results. */
-    inline ValueTree createJUnitValueTree (const String& testSuiteName, const UnitTestRunner& runner, RelativeTime duration)
+    ValueTree createJUnitValueTree (const String& testSuiteName, const UnitTestRunner& runner, RelativeTime duration)
     {
         ValueTree suite ("testsuite");
         suite.setProperty ("name", testSuiteName, nullptr);
@@ -145,13 +142,13 @@ namespace JUnit
     }
 
     /** Creates a JUnit formatted 'testsuite' XmlElement from a UnitTestRunner's results. */
-    inline std::unique_ptr<XmlElement> createJUnitXML (const String& testSuiteName, const UnitTestRunner& runner, RelativeTime duration)
+    std::unique_ptr<XmlElement> createJUnitXML (const String& testSuiteName, const UnitTestRunner& runner, RelativeTime duration)
     {
         return createJUnitValueTree (testSuiteName, runner, duration).createXml();
     }
 
     /** Converts a UnitTestRunner's results to a JUnit formatted XML file. */
-    inline Result createJUnitXMLFile (const File& destinationFile, const String& testSuiteName, const UnitTestRunner& runner, RelativeTime duration)
+    Result createJUnitXMLFile (const File& destinationFile, const String& testSuiteName, const UnitTestRunner& runner, RelativeTime duration)
     {
         if (auto xml = createJUnitXML (testSuiteName, runner, duration))
             if (! xml->writeTo (destinationFile))
@@ -165,7 +162,7 @@ namespace JUnit
 //==============================================================================
 namespace TestRunner
 {
-    inline int runTests (const File& junitResultsFile)
+    int runTests (const File& junitResultsFile)
     {
         CoutLogger logger;
         Logger::setCurrentLogger (&logger);
@@ -173,12 +170,9 @@ namespace TestRunner
         tracktion_engine::Engine engine { ProjectInfo::projectName, std::make_unique<TestUIBehaviour>(), std::make_unique<TestEngineBehaviour>() };
 
         UnitTestRunner testRunner;
-        testRunner.setAssertOnFailure (true);
+        testRunner.setAssertOnFailure (false);
 
         Array<UnitTest*> tests;
-        tests.addArray (UnitTest::getTestsInCategory ("tracktion_core"));
-        tests.addArray (UnitTest::getTestsInCategory ("tracktion_graph"));
-        tests.addArray (UnitTest::getTestsInCategory ("tracktion_engine"));
         tests.addArray (UnitTest::getTestsInCategory ("Tracktion"));
         tests.addArray (UnitTest::getTestsInCategory ("Tracktion:Longer"));
         

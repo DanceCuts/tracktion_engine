@@ -8,23 +8,23 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /**
     A Node that intercepts incoming live MIDI and inserts it in to the playback graph.
 */
-class MidiInputDeviceNode final : public tracktion::graph::Node,
+class MidiInputDeviceNode final : public tracktion_graph::Node,
                                   public InputDeviceInstance::Consumer
 {
 public:
     MidiInputDeviceNode (InputDeviceInstance&,
                          MidiInputDevice&, MidiMessageArray::MPESourceID,
-                         tracktion::graph::PlayHeadState&);
+                         tracktion_graph::PlayHeadState&);
     ~MidiInputDeviceNode() override;
     
-    tracktion::graph::NodeProperties getNodeProperties() override;
-    void prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo&) override;
+    tracktion_graph::NodeProperties getNodeProperties() override;
+    void prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo&) override;
     bool isReadyToProcess() override;
     void process (ProcessContext&) override;
 
@@ -36,7 +36,7 @@ private:
     InputDeviceInstance& instance;
     MidiInputDevice& midiInputDevice;
     const  MidiMessageArray::MPESourceID midiSourceID = MidiMessageArray::notMPE;
-    tracktion::graph::PlayHeadState& playHeadState;
+    tracktion_graph::PlayHeadState& playHeadState;
 
     juce::CriticalSection bufferLock;
     juce::OwnedArray<juce::MidiMessage> incomingMessages;
@@ -53,4 +53,4 @@ private:
     bool isLivePlayOverActive();
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

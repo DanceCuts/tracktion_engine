@@ -7,7 +7,7 @@
 */
 
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -360,4 +360,4 @@ BandlimitedWaveLookupTables::~BandlimitedWaveLookupTables()
     tableCache.removeFirstMatchingValue (this);
 }
 
-}} // namespace tracktion { inline namespace engine
+}

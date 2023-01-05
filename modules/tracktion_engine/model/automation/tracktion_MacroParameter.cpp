@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 MacroParameter::Assignment::Assignment (const juce::ValueTree& v, const MacroParameter& mp)
@@ -57,7 +57,7 @@ void MacroParameter::parameterChanged (float, bool byAutomation)
         return;
 
     TRACKTION_ASSERT_MESSAGE_THREAD
-    auto cursorPos = edit.getTransport().getPosition();
+    auto cursorPos = edit.getTransport().getCurrentPosition();
 
     for (auto ap : getAllParametersBeingModifiedBy (edit, *this))
         if (! ap->automatableEditElement.isBeingActivelyPlayed())
@@ -266,4 +266,4 @@ MacroParameterElement::MacroParameterElement (Edit& e, const juce::ValueTree& v)
 {
 }
 
-}} // namespace tracktion { inline namespace engine
+}

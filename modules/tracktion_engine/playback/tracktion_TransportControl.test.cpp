@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 #if TRACKTION_UNIT_TESTS
@@ -69,7 +69,6 @@ public:
 
         beginTest ("Test injected impulses align");
         {
-            using namespace std::chrono_literals;
             // Start recording, add an impulse after 1s then wait another 1s and stop recording
             ProcessThread processThread (audioIO, params);
 
@@ -78,10 +77,10 @@ public:
             transport.record (false, false);
             auto& epc = *transport.getCurrentPlaybackContext();
             processThread.waitForThreadToStart();
-            waitUntilPlayheadPosition (epc, 1.0s);
+            waitUntilPlayheadPosition (epc, 1.0);
 
             processThread.insertImpulseIntoNextBlock();
-            waitUntilPlayheadPosition (epc, 2.0s);
+            waitUntilPlayheadPosition (epc, 2.0);
             expect (! processThread.needsToInsertImpulse(), "Impulse not inserted");
 
             transport.stop (false, true);
@@ -142,7 +141,7 @@ public:
             std::this_thread::yield();
     }
     
-    void waitUntilPlayheadPosition (const EditPlaybackContext& epc, TimePosition time)
+    void waitUntilPlayheadPosition (const EditPlaybackContext& epc, double time)
     {
         using namespace std::chrono_literals;
         
@@ -287,7 +286,7 @@ public:
 
     int64_t findImpulseSampleIndex (Engine& engine, juce::File& file)
     {
-        if (auto reader = std::unique_ptr<juce::AudioFormatReader> (tracktion::engine::AudioFileUtils::createReaderFor (engine, file)))
+        if (auto reader = std::unique_ptr<juce::AudioFormatReader> (tracktion_engine::AudioFileUtils::createReaderFor (engine, file)))
             return reader->searchForLevel (0, reader->lengthInSamples,
                                            0.9f, 1.1f,
                                            0);
@@ -307,7 +306,7 @@ public:
     
     double getFileLength (Engine& engine, const juce::File& file)
     {
-        if (auto reader = std::unique_ptr<juce::AudioFormatReader> (tracktion::engine::AudioFileUtils::createReaderFor (engine, file)))
+        if (auto reader = std::unique_ptr<juce::AudioFormatReader> (tracktion_engine::AudioFileUtils::createReaderFor (engine, file)))
             if (reader->sampleRate > 0.0)
                 return reader->lengthInSamples / reader->sampleRate;
 
@@ -315,10 +314,8 @@ public:
     }
 };
 
-#if 0 //TODO: This test is disabled for now as it seems to have a problem on the CI
 static RecordingSyncTests recordingSyncTests;
-#endif
 
 #endif // TRACKTION_UNIT_TESTS
 
-}} // namespace tracktion { inline namespace engine
+}

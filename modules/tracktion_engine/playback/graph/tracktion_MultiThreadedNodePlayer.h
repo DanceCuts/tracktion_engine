@@ -11,7 +11,7 @@
 #pragma once
 
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -30,9 +30,9 @@ public:
     }
 
     /** Creates an NodePlayer to process a Node. */
-    MultiThreadedNodePlayer (std::unique_ptr<tracktion::graph::Node> node,
-                             ProcessState& processStateToUse,
-                             double sampleRate, int blockSize)
+    MultiThreadedNodePlayer (std::unique_ptr<tracktion_graph::Node> node,
+                         ProcessState& processStateToUse,
+                         double sampleRate, int blockSize)
         : MultiThreadedNodePlayer (processStateToUse)
     {
         nodePlayer.setNode (std::move (node), sampleRate, blockSize);
@@ -47,17 +47,17 @@ public:
         nodePlayer.setNumThreads (numThreads);
     }
 
-    tracktion::graph::Node* getNode()
+    tracktion_graph::Node* getNode()
     {
         return nodePlayer.getNode();
     }
 
-    void setNode (std::unique_ptr<tracktion::graph::Node> newNode)
+    void setNode (std::unique_ptr<tracktion_graph::Node> newNode)
     {
         nodePlayer.setNode (std::move (newNode));
     }
 
-    void setNode (std::unique_ptr<tracktion::graph::Node> newNode, double sampleRateToUse, int blockSizeToUse)
+    void setNode (std::unique_ptr<tracktion_graph::Node> newNode, double sampleRateToUse, int blockSizeToUse)
     {
         nodePlayer.setNode (std::move (newNode), sampleRateToUse, blockSizeToUse);
     }
@@ -70,7 +70,7 @@ public:
     /** Processes a block of audio and MIDI data.
         Returns the number of times a node was checked but unable to be processed.
     */
-    int process (const tracktion::graph::Node::ProcessContext& pc)
+    int process (const tracktion_graph::Node::ProcessContext& pc)
     {
         int numMisses = 0;
         playHeadState.playHead.setReferenceSampleRange (pc.referenceSampleRange);
@@ -80,42 +80,37 @@ public:
         
         if (splitTimelineRange.isSplit)
         {
-            const auto firstProportion = splitTimelineRange.timelineRange1.getLength() / (double) pc.referenceSampleRange.getLength();
-
-            const auto firstReferenceRange  = pc.referenceSampleRange.withEnd (pc.referenceSampleRange.getStart() + (int64_t) std::llround (pc.referenceSampleRange.getLength() * firstProportion));
-            const auto secondReferenceRange = juce::Range<int64_t> (firstReferenceRange.getEnd(), pc.referenceSampleRange.getEnd());
-            jassert (firstReferenceRange.getLength() + secondReferenceRange.getLength() == pc.referenceSampleRange.getLength());
-
-            const auto firstNumSamples  = (choc::buffer::FrameCount) std::llround (pc.numSamples * firstProportion);
-            const auto secondNumSamples = pc.numSamples - firstNumSamples;
-            jassert (firstNumSamples + secondNumSamples == pc.numSamples);
+            const auto firstNumSamples = (choc::buffer::FrameCount) splitTimelineRange.timelineRange1.getLength();
+            const auto firstRange = pc.referenceSampleRange.withLength (firstNumSamples);
 
             {
                 auto destAudio = pc.buffers.audio.getStart (firstNumSamples);
                 auto& destMidi = pc.buffers.midi;
-
-                processState.update (nodePlayer.getSampleRate(), firstReferenceRange, ProcessState::UpdateContinuityFlags::yes);
-                tracktion::graph::Node::ProcessContext pc1 { firstNumSamples, firstReferenceRange, { destAudio , destMidi } };
+                
+                processState.update (nodePlayer.getSampleRate(), firstRange);
+                tracktion_graph::Node::ProcessContext pc1 { firstRange, { destAudio , destMidi } };
                 numMisses += nodePlayer.process (pc1);
             }
-
+            
             {
-                const auto firstDuration = processState.editTimeRange.getLength();
-
+                const double firstDuration = processState.editTimeRange.getLength();
+                const auto secondNumSamples = (choc::buffer::FrameCount) splitTimelineRange.timelineRange2.getLength();
+                const auto secondRange = juce::Range<int64_t>::withStartAndLength (firstRange.getEnd(), secondNumSamples);
+                
                 auto destAudio = pc.buffers.audio.getFrameRange ({ firstNumSamples, firstNumSamples + secondNumSamples });
                 scratchMidi.clear();
-
-                tracktion::graph::Node::ProcessContext pc2 { secondNumSamples, secondReferenceRange, { destAudio, scratchMidi } };
-                processState.update (nodePlayer.getSampleRate(), secondReferenceRange, ProcessState::UpdateContinuityFlags::yes);
+                
+                tracktion_graph::Node::ProcessContext pc2 { secondRange, { destAudio, scratchMidi } };
+                processState.update (nodePlayer.getSampleRate(), secondRange);
                 numMisses += nodePlayer.process (pc2);
 
                 // Merge back MIDI from end of block
-                pc.buffers.midi.mergeFromWithOffset (scratchMidi, firstDuration.inSeconds());
+                pc.buffers.midi.mergeFromWithOffset (scratchMidi, firstDuration);
             }
         }
         else
         {
-            processState.update (nodePlayer.getSampleRate(), pc.referenceSampleRange, ProcessState::UpdateContinuityFlags::yes);
+            processState.update (nodePlayer.getSampleRate(), pc.referenceSampleRange);
             numMisses += nodePlayer.process (pc);
         }
         
@@ -135,10 +130,10 @@ public:
     }
     
 private:
-    tracktion::graph::PlayHeadState& playHeadState;
+    tracktion_graph::PlayHeadState& playHeadState;
     ProcessState& processState;
     MidiMessageArray scratchMidi;
-    tracktion::graph::MultiThreadedNodePlayer nodePlayer;
+    tracktion_graph::MultiThreadedNodePlayer nodePlayer;
 };
 
-}} // namespace tracktion { inline namespace engine
+}

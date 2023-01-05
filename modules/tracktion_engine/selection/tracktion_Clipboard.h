@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /**
@@ -35,7 +35,7 @@ public:
             Edit& edit;
             EditInsertPoint& insertPoint;
             Track::Ptr startTrack;
-            TimePosition startTime;
+            double startTime = 0;
             SelectionManager* selectionManager = nullptr;
             bool silent = false;
             FileDragList::PreferredLayout preferredLayout = FileDragList::horizontal;
@@ -58,7 +58,7 @@ public:
         struct ItemInfo
         {
             ProjectItemID itemID;
-            TimeRange range;
+            EditTimeRange range;
         };
 
         std::vector<ItemInfo> itemIDs;
@@ -82,17 +82,15 @@ public:
         };
         
         void addClip (int trackOffset, const juce::ValueTree& state);
-        void addSelectedClips (const SelectableList&, TimeRange, AutomationLocked);
-        void addAutomation (const juce::Array<TrackSection>&, TimeRange);
+        void addSelectedClips (const SelectableList&, EditTimeRange range, AutomationLocked);
+        void addAutomation (const juce::Array<TrackSection>&, EditTimeRange range);
 
         struct ClipInfo
         {
             juce::ValueTree state;
             int trackOffset = 0;
             bool hasBeatTimes = false;
-            BeatPosition startBeats;
-            BeatDuration lengthBeats;
-            BeatPosition offsetBeats;
+            double startBeats = 0, lengthBeats = 0, offsetBeats = 0;
         };
 
         std::vector<ClipInfo> clips;
@@ -121,18 +119,17 @@ public:
 
     struct TempoChanges  : public ContentType
     {
-        TempoChanges (const TempoSequence&, TimeRange);
+        TempoChanges (const TempoSequence&, EditTimeRange range);
         ~TempoChanges() override;
 
         using ContentType::pasteIntoEdit;
         bool pasteIntoEdit (const EditPastingOptions&) const override;
 
-        bool pasteTempoSequence (TempoSequence&, TimeRange targetRange) const;
+        bool pasteTempoSequence (TempoSequence&, EditTimeRange targetRange) const;
 
         struct TempoChange
         {
-            BeatPosition beat;
-            double bpm;
+            double beat, bpm;
             float curve;
         };
 
@@ -141,13 +138,13 @@ public:
 
     struct AutomationPoints  : public ContentType
     {
-        AutomationPoints (const AutomationCurve&, TimeRange);
+        AutomationPoints (const AutomationCurve&, EditTimeRange range);
         ~AutomationPoints() override;
 
         using ContentType::pasteIntoEdit;
         bool pasteIntoEdit (const EditPastingOptions&) const override;
 
-        bool pasteAutomationCurve (AutomationCurve&, TimeRange targetRange) const;
+        bool pasteAutomationCurve (AutomationCurve&, EditTimeRange targetRange) const;
 
         std::vector<AutomationCurve::AutomationPoint> points;
         juce::Range<float> valueRange;
@@ -161,7 +158,7 @@ public:
         std::pair<juce::Array<MidiNote*>, juce::Array<MidiControllerEvent*>> pasteIntoClip (MidiClip&,
                                                                                             const juce::Array<MidiNote*>& selectedNotes,
                                                                                             const juce::Array<MidiControllerEvent*>& selectedEvents,
-                                                                                            TimePosition cursorPosition, const std::function<BeatPosition (BeatPosition)>& snapBeat,
+                                                                                            double cursorPosition, const std::function<double(double)>& snapBeat,
                                                                                             int destController) const;
 
 
@@ -173,12 +170,12 @@ public:
 
     private:
         juce::Array<MidiNote*> pasteNotesIntoClip (MidiClip&, const juce::Array<MidiNote*>& selectedNotes,
-                                                   TimePosition cursorPosition, const std::function<BeatPosition (BeatPosition)>& snapBeat) const;
+                                                   double cursorPosition, const std::function<double(double)>& snapBeat) const;
 
         juce::Array<MidiControllerEvent*> pasteControllersIntoClip (MidiClip& clip,
                                                                     const juce::Array<MidiNote*>& selectedNotes,
                                                                     const juce::Array<MidiControllerEvent*>& selectedEvents,
-                                                                    TimePosition cursorPosition, const std::function<BeatPosition (BeatPosition)>& snapBeat,
+                                                                    double cursorPosition, const std::function<double(double)>& snapBeat,
                                                                     int destController) const;
     };
 
@@ -264,4 +261,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Clipboard)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
  class ClipEffect;
@@ -89,16 +89,16 @@ public:
     /** Determines how the Edit will be created */
     struct Options
     {
-        Engine& engine;                                                         /**< The Engine to use. */
-        juce::ValueTree editState;                                              /**< The Edit state. @see createEmptyEdit */
-        ProjectItemID editProjectItemID;                                        /**< The editProjectItemID, must be valid. */
+        Engine& engine;                                                     /**< The Engine to use. */
+        juce::ValueTree editState;                                          /**< The Edit state. @see createEmptyEdit */
+        ProjectItemID editProjectItemID;                                    /**< The editProjectItemID, must be valid. */
 
-        EditRole role = forEditing;                                             /**< An optional role to open the Edit with. */
-        LoadContext* loadContext = nullptr;                                     /**< An optional context to be monitor for loading status. */
-        int numUndoLevelsToStore = Edit::getDefaultNumUndoLevels();             /**< The number of undo levels to use. */
+        EditRole role = forEditing;                                         /**< An optional role to open the Edit with. */
+        LoadContext* loadContext = nullptr;                                 /**< An optional context to be monitor for loading status. */
+        int numUndoLevelsToStore = Edit::getDefaultNumUndoLevels();         /**< The number of undo levels to use. */
 
-        std::function<juce::File()> editFileRetriever = {};                     /**< An optional editFileRetriever to use. */
-        std::function<juce::File (const juce::String&)> filePathResolver = {};  /**< An optional filePathResolver to use. */
+        std::function<juce::File()> editFileRetriever;                      /**< An optional editFileRetriever to use. */
+        std::function<juce::File (const juce::String&)> filePathResolver;   /**< An optional filePathResolver to use. */
     };
 
     /** Creates an Edit from a set of Options. */
@@ -161,12 +161,7 @@ public:
     static constexpr double maximumLength = 48.0 * 60.0 * 60.0;
     
     /** Returns the maximum length an Edit can be. */
-    static TimeDuration getMaximumLength()          { return TimeDuration::fromSeconds (maximumLength); }
-
-    /** Returns the maximum length an Edit can be. */
-    static TimeRange getMaximumEditTimeRange()      { return { TimePosition(), TimePosition::fromSeconds (maximumLength) }; }
-
-    static TimePosition getMaximumEditEnd()         { return getMaximumEditTimeRange().getEnd(); }
+    static EditTimeRange getMaximumEditTimeRange()  { return { 0.0, maximumLength }; }
 
     static const int ticksPerQuarterNote = 960; /**< The number of ticks per quarter note. */
 
@@ -457,7 +452,7 @@ public:
     void removeModifierTimer (ModifierTimer&);
 
     /** Updates all the ModifierTimers with a given edit time and number of samples. */
-    void updateModifierTimers (TimePosition editTime, int numSamples) const;
+    void updateModifierTimers (double editTime, int numSamples) const;
 
     /** Holds the global Macros for the Edit. */
     struct GlobalMacros : public MacroParameterElement
@@ -514,20 +509,20 @@ public:
 
     //==============================================================================
     /** Finds the next marker or start/end of a clip after a certain time. */
-    TimePosition getNextTimeOfInterest (TimePosition afterThisTime);
+    double getNextTimeOfInterest (double afterThisTime);
 
     /** Finds the previous marker or start/end of a clip after a certain time. */
-    TimePosition getPreviousTimeOfInterest (TimePosition beforeThisTime);
+    double getPreviousTimeOfInterest (double beforeThisTime);
 
     //==============================================================================
     /** Returns the PluginCache which manages all active Plugin[s] for this Edit. */
     PluginCache& getPluginCache() noexcept;
 
     /** Returns the time of first clip. */
-    TimePosition getFirstClipTime() const;
+    double getFirstClipTime() const;
 
     /** Returns the end time of last clip. */
-    TimeDuration getLength() const;
+    double getLength() const;
 
     //==============================================================================
     /** Returns the master VolumeAndPanPlugin. */
@@ -592,10 +587,10 @@ public:
     bool isTimecodeSyncEnabled() const noexcept             { return midiTimecodeSourceDeviceEnabled; }
 
     /** Returns the offset to apply to MIDI timecode. */
-    TimeDuration getTimecodeOffset() const noexcept         { return timecodeOffset; }
+    double getTimecodeOffset() const noexcept               { return timecodeOffset; }
 
     /** Sets the offset to apply to MIDI timecode. */
-    void setTimecodeOffset (TimeDuration newOffset);
+    void setTimecodeOffset (double newOffset);
 
     /** Returns true if hours are ignored when syncing to MIDI timecode. */
     bool isMidiTimecodeIgnoringHours() const                { return midiTimecodeIgnoringHours; }
@@ -623,10 +618,10 @@ public:
 
     //==============================================================================
     /** Sets a range for the click track to be audible within. */
-    void setClickTrackRange (TimeRange) noexcept;
+    void setClickTrackRange (EditTimeRange) noexcept;
 
     /** Returns the range the click track will be audible within. */
-    TimeRange getClickTrackRange() const noexcept;
+    EditTimeRange getClickTrackRange() const noexcept;
 
     /** Returns the click track volume. */
     float getClickTrackVolume() const noexcept              { return juce::jlimit (0.2f, 1.0f, clickTrackGain.get()); }
@@ -674,7 +669,7 @@ public:
     /** Invalidates the stored length so the next call to getLength will update form the Edit contents.
         You shouldn't normally need to call this as it will happen automatically as clips are added/removed.
     */
-    void invalidateStoredLength() noexcept              { totalEditLength = {}; }
+    void invalidateStoredLength() noexcept              { totalEditLength = -1.0; }
 
     /** If there's a change to send out to the listeners, do it now rather than
         waiting for the next timer message.
@@ -774,10 +769,10 @@ public:
     //==============================================================================
     juce::CachedValue<juce::String> lastSignificantChange;  /**< The last time a change was made to the Edit. @see getTimeOfLastChange */
 
-    juce::CachedValue<TimeDuration> masterFadeIn,   /**< The duration in seconds of the fade in. */
-                                    masterFadeOut,  /**< The duration in seconds of the fade out. */
-                                    timecodeOffset,       /**< The duration in seconds of the timecode offset. */
-                                    videoOffset;          /**< The duration in seconds of the video offset. */
+    juce::CachedValue<double> masterFadeIn,     /**< The duration in seconds of the fade in. */
+                              masterFadeOut,    /**< The duration in seconds of the fade out. */
+                              timecodeOffset,   /**< The duration in seconds of the timecode offset. */
+                              videoOffset;      /**< The duration in seconds of the video offset. */
 
     juce::CachedValue<AudioFadeCurve::Type> masterFadeInType,   /**< The curve type of the fade in. */
                                             masterFadeOutType;  /**< The curve type of the fade out. */
@@ -833,7 +828,7 @@ private:
     juce::Array<ModifierTimer*, juce::CriticalSection> modifierTimers;
     std::unique_ptr<GlobalMacros> globalMacros;
 
-    mutable std::optional<TimeDuration> totalEditLength;
+    mutable double totalEditLength = -1.0;
     std::atomic<bool> isLoadInProgress { true };
     std::atomic<int> performingRenderCount { 0 };
     bool shouldRestartPlayback = false;
@@ -848,7 +843,7 @@ private:
     juce::Array<EditItemID> lowLatencyDisabledPlugins;
     double normalLatencyBufferSizeSeconds = 0.0;
     bool isPreviewEdit = false;
-    std::atomic<TimePosition> clickMark1Time { TimePosition() }, clickMark2Time { TimePosition() };
+    std::atomic<double> clickMark1Time { 0.0 }, clickMark2Time { 0.0 };
     std::atomic<bool> isFullyConstructed { false };
     mutable std::atomic<uint64_t> nextID { 0 }; // 0 is used as flag to initialise the next ID count
     
@@ -956,4 +951,4 @@ private:
     ActiveEdits();
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

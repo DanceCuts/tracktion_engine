@@ -4,23 +4,23 @@
 
  BEGIN_JUCE_PIP_METADATA
 
-  name:                     EngineInPluginDemo
-  version:                  0.0.1
-  vendor:                   Tracktion
-  website:                  www.tracktion.com
-  description:              Example of how to use the engine in a plugin
+  name:             EngineInPluginDemo
+  version:          0.0.1
+  vendor:           Tracktion
+  website:          www.tracktion.com
+  description:      Example of how to use the engine in a plugin
 
-  dependencies:             juce_audio_basics, juce_audio_devices, juce_audio_formats, juce_audio_plugin_client,
-                            juce_audio_processors, juce_audio_utils, juce_core, juce_data_structures, juce_events,
-                            juce_graphics, juce_gui_basics, juce_gui_extra, juce_dsp, juce_osc, tracktion_engine, tracktion_graph
-  exporters:                vs2017, xcode_mac, linux_make
+  dependencies:     juce_audio_basics, juce_audio_devices, juce_audio_formats, juce_audio_plugin_client, 
+                    juce_audio_processors, juce_audio_utils, juce_core, juce_data_structures, juce_events, 
+                    juce_graphics, juce_gui_basics, juce_gui_extra, juce_dsp, juce_osc, tracktion_engine, tracktion_graph
+  exporters:        vs2017, xcode_mac, linux_make
 
-  moduleFlags:              JUCE_STRICT_REFCOUNTEDPOINTER=1
-  defines:                  JUCE_MODAL_LOOPS_PERMITTED=1
-  pluginCharacteristics:    pluginIsSynth, pluginWantsMidiIn, pluginProducesMidiOut
+  moduleFlags:      JUCE_STRICT_REFCOUNTEDPOINTER=1
+  defines:          JucePlugin_IsSynth=1, JucePlugin_WantsMidiInput=1, JucePlugin_ProducesMidiOutput=1
+                    JucePlugin_Vst3Category="Instrument", JucePlugin_AUMainType='aumu', JucePlugin_VSTCategory=kPlugCategSynth, JUCE_MODAL_LOOPS_PERMITTED=1
 
-  type:                     AudioProcessor
-  mainClass:                EngineInPluginDemo
+  type:             AudioProcessor
+  mainClass:        EngineInPluginDemo
 
  END_JUCE_PIP_METADATA
 
@@ -120,10 +120,6 @@ private:
             auto dev = dm.getMidiInDevice (i);
             dev->setEnabled (true);
             dev->setEndToEndEnabled (true);
-            dev->recordingEnabled = true;
-
-            if (! dev->isEndToEndEnabled())
-                dev->flipEndToEnd();
         }
         
         edit.playInStopEnabled = true;
@@ -131,21 +127,10 @@ private:
 
         // Add the midi input to track 1
         if (auto t = EngineHelpers::getOrInsertAudioTrackAt (edit, 0))
-        {
             if (auto dev = dm.getMidiInDevice (0))
-            {
                 for (auto instance : edit.getAllInputDevices())
-                {
                     if (&instance->getInputDevice() == dev)
-                    {
                         instance->setTargetTrack (*t, 0, true);
-
-                        if (auto destination = instance->getDestination (*t, 0))
-                            destination->recordEnabled = true;
-                    }
-                }
-            }
-        }
 
         // Also add the same midi input to track 2
         if (auto t = EngineHelpers::getOrInsertAudioTrackAt (edit, 1))
@@ -153,6 +138,7 @@ private:
                 for (auto instance : edit.getAllInputDevices())
                     if (&instance->getInputDevice() == dev)
                         instance->setTargetTrack (*t, 0, false);
+
 
         edit.restartPlayback();
     }
@@ -199,7 +185,6 @@ private:
     {
     public:
         bool autoInitialiseDeviceManager() override { return false; }
-        bool addSystemAudioIODeviceTypes() override { return false; }
     };
     
     //==============================================================================
@@ -260,34 +245,22 @@ private:
 
     //==============================================================================
     //==============================================================================
-    class PluginEditor : public AudioProcessorEditor,
-                         private te::TransportControl::Listener
+    class PluginEditor : public AudioProcessorEditor
     {
     public:
         PluginEditor (EngineInPluginDemo& p)
             : AudioProcessorEditor (p),
               plugin (p)
         {
-            plugin.engineWrapper->transport.addListener (this);
-
             addAndMakeVisible (clickTrackButton);
-            addAndMakeVisible (recordMidiButton);
-            addAndMakeVisible (midiKeyboard);
 
             pluginPositionInfo.resetToDefault();
             editPositionInfo.resetToDefault();
-
-            recordMidiButton.onClick = [this] { recordMidiButtonClicked(); };
-
+            
             repaintTimer.startTimerHz (25);
             update();
 
             setSize (400, 300);
-        }
-
-        ~PluginEditor() override
-        {
-            plugin.engineWrapper->transport.removeListener (this);
         }
         
         void paint (Graphics& g) override
@@ -301,7 +274,8 @@ private:
                  << newLine
                  << "Tracktion Engine Info:" << newLine
                  << PlayHeadHelpers::getTimecodeDisplay (editPositionInfo) << newLine
-                 << "Build:" << Time::getCompilationDate().toString (true, true);
+                 << "Build:" << newLine
+                 << Time::getCompilationDate().toString (true, true);
             g.setColour (Colours::white);
             g.setFont (15.0f);
             g.drawFittedText (text, r.reduced (10), Justification::topLeft, 5);
@@ -310,31 +284,15 @@ private:
         void resized() override
         {
             auto r = getLocalBounds();
-            midiKeyboard.setBounds (r.removeFromBottom (70));
-            r = r.reduced (10);
-            recordMidiButton.setBounds (r.removeFromBottom (26));
-            clickTrackButton.setBounds (r.removeFromBottom (26));
+            clickTrackButton.setBounds (r.reduced (10).removeFromBottom (26));
         }
         
     private:
         EngineInPluginDemo& plugin;
-        te::Edit& edit { plugin.engineWrapper->edit };
         AudioPlayHead::CurrentPositionInfo pluginPositionInfo, editPositionInfo;
         te::LambdaTimer repaintTimer { [this] { update(); } };
-        juce::ToggleButton clickTrackButton { "Enable Click Track" };
-        juce::MidiKeyboardComponent midiKeyboard { getMidiInputDevice().keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard };
-        juce::TextButton recordMidiButton { "Start MIDI Recording" };
-
-        te::MidiInputDevice& getMidiInputDevice() const
-        {
-            auto& dm = plugin.engineWrapper->engine.getDeviceManager();
-            auto dev = dm.getMidiInDevice (0);
-            assert (dev != nullptr);
-            assert (te::HostedAudioDeviceInterface::isHostedMidiInputDevice (*dev));
-
-            return *dev;
-        }
-
+        ToggleButton clickTrackButton { "Enable Click Track" };
+        
         void update()
         {
             if (plugin.engineWrapper)
@@ -342,73 +300,10 @@ private:
                 pluginPositionInfo = plugin.engineWrapper->playheadSynchroniser.getPositionInfo();
                 editPositionInfo = getCurrentPositionInfo (plugin.engineWrapper->edit);
                 clickTrackButton.getToggleStateValue().referTo (plugin.engineWrapper->edit.clickTrackEnabled.getPropertyAsValue());
-
-                // Update recording button
-                bool isRecording = false;
-
-                if (auto instance = getRecordingMidiInputInstance())
-                    isRecording = instance->isRecording();
-
-                if (isRecording)
-                {
-                    recordMidiButton.setButtonText ("Stop MIDI Recording");
-                    recordMidiButton.setColour (juce::TextButton::buttonColourId, juce::Colours::red);
-                }
-                else
-                {
-                    recordMidiButton.setButtonText ("Start MIDI Recording");
-                    recordMidiButton.setColour (juce::TextButton::buttonColourId, getLookAndFeel().findColour (juce::TextButton::buttonColourId));
-                }
             }
             
             repaint();
         }
-
-        te::InputDeviceInstance* getRecordingMidiInputInstance()
-        {
-            if (auto t = EngineHelpers::getOrInsertAudioTrackAt (edit, 0))
-                if (auto instance = edit.getEditInputDevices().getInputInstance (*t, 0))
-                    return dynamic_cast<te::InputDeviceInstance*> (instance);
-
-            return nullptr;
-        }
-
-        void recordMidiButtonClicked()
-        {
-            if (auto instance = getRecordingMidiInputInstance())
-            {
-                if (instance->isRecording())
-                {
-                    instance->stopRecording();
-                }
-                else
-                {
-                    EngineHelpers::removeAllClips (*EngineHelpers::getOrInsertAudioTrackAt (edit, 0));
-
-                    auto& dm = edit.engine.getDeviceManager();
-                    const auto start = edit.getTransport().getPosition();
-
-                    if (auto error = instance->prepareToRecord (start, start, dm.getSampleRate(), dm.getBlockSize(), true); error.isNotEmpty())
-                        edit.engine.getUIBehaviour().showWarningMessage (error);
-                    else
-                        instance->startRecording();
-                }
-            }
-        }
-
-        void playbackContextChanged() override
-        {
-        }
-
-        void autoSaveNow() override {}
-        void setAllLevelMetersActive (bool /*metersBecameInactive*/) override {}
-        void setVideoPosition (te::TimePosition, bool /*forceJump*/) override {}
-        void startVideo() override {}
-        void stopVideo() override {}
-
-        void recordingFinished (te::InputDeviceInstance&,
-                                juce::ReferenceCountedArray<te::Clip> /*recordedClips*/) override
-        {}
     };
 
     //==============================================================================

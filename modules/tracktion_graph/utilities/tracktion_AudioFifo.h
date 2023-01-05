@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace graph
+namespace tracktion_graph
 {
 
 //==============================================================================
@@ -163,4 +163,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE (AudioFifo)
 };
 
-}} // namespace tracktion
+} // namespace tracktion_graph

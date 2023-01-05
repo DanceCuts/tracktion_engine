@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 LevelMeterPlugin::LevelMeterPlugin (PluginCreationInfo info)  : Plugin (info)
@@ -94,4 +94,4 @@ void LevelMeterPlugin::restorePluginStateFromValueTree (const juce::ValueTree& v
         p->updateFromAttachedValue();
 }
 
-}} // namespace tracktion { inline namespace engine
+}

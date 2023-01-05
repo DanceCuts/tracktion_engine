@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /**
@@ -46,8 +46,8 @@ public:
     juce::String getAlias() const;
     void setAlias (const juce::String& newAlias);
 
-    /** Called after all devices are constructed, so it can use all the device
-        names in its calculations.
+    /** called after all devices are constructed, so it can use all the device
+        names in its calculations..
     */
     void initialiseDefaultAlias();
 
@@ -123,7 +123,7 @@ public:
     */
     virtual bool shouldTrackContentsBeMuted()   { return false; }
 
-    virtual juce::String prepareToRecord (TimePosition start, TimePosition punchIn,
+    virtual juce::String prepareToRecord (double start, double punchIn,
                                           double sampleRate, int blockSizeSamples,
                                           bool isLivePunch) = 0;
 
@@ -136,10 +136,10 @@ public:
     virtual juce::File getRecordingFile() const     { return {}; }
 
     virtual void prepareAndPunchRecord();
-    virtual TimePosition getPunchInTime() = 0;
+    virtual double getPunchInTime() = 0;
     virtual Clip::Array stopRecording() = 0;
-    virtual Clip::Array applyLastRecordingToEdit (TimeRange recordedRange,
-                                                  bool isLooping, TimeRange loopRange,
+    virtual Clip::Array applyLastRecordingToEdit (EditTimeRange recordedRange,
+                                                  bool isLooping, EditTimeRange loopRange,
                                                   bool discardRecordings,
                                                   SelectionManager*) = 0;
 
@@ -291,4 +291,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (InputDeviceInstance)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

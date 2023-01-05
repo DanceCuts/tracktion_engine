@@ -8,8 +8,7 @@
 
 #pragma once
 
-namespace te = tracktion;
-using namespace std::literals;
+namespace te = tracktion_engine;
 
 //==============================================================================
 namespace Helpers
@@ -97,14 +96,14 @@ namespace PlayHeadHelpers
 //==============================================================================
 namespace EngineHelpers
 {
-    inline te::Project::Ptr createTempProject (te::Engine& engine)
+    te::Project::Ptr createTempProject (te::Engine& engine)
     {
         auto file = engine.getTemporaryFileManager().getTempDirectory().getChildFile ("temp_project").withFileExtension (te::projectFileSuffix);
         te::ProjectManager::TempProject tempProject (engine.getProjectManager(), file, true);
         return tempProject.project;
     }
 
-    inline void showAudioDeviceSettings (te::Engine& engine)
+    void showAudioDeviceSettings (te::Engine& engine)
     {
         DialogWindow::LaunchOptions o;
         o.dialogTitle = TRANS("Audio Settings");
@@ -115,7 +114,7 @@ namespace EngineHelpers
         o.launchAsync();
     }
 
-    inline void browseForAudioFile (te::Engine& engine, std::function<void (const File&)> fileChosenCallback)
+    void browseForAudioFile (te::Engine& engine, std::function<void (const File&)> fileChosenCallback)
     {
         auto fc = std::make_shared<FileChooser> ("Please select an audio file to load...",
                                                  engine.getPropertyStorage().getDefaultLoadSaveDirectory ("pitchAndTimeExample"),
@@ -133,7 +132,7 @@ namespace EngineHelpers
                          });
     }
 
-    inline void removeAllClips (te::AudioTrack& track)
+    void removeAllClips (te::AudioTrack& track)
     {
         auto clips = track.getClips();
 
@@ -141,13 +140,13 @@ namespace EngineHelpers
             clips.getUnchecked (i)->removeFromParentTrack();
     }
     
-    inline te::AudioTrack* getOrInsertAudioTrackAt (te::Edit& edit, int index)
+    te::AudioTrack* getOrInsertAudioTrackAt (te::Edit& edit, int index)
     {
         edit.ensureNumberOfAudioTracks (index + 1);
         return te::getAudioTracks (edit)[index];
     }
 
-    inline te::WaveAudioClip::Ptr loadAudioFileAsClip (te::Edit& edit, const File& file)
+    te::WaveAudioClip::Ptr loadAudioFileAsClip (te::Edit& edit, const File& file)
     {
         // Find the first track and delete all clips from it
         if (auto track = getOrInsertAudioTrackAt (edit, 0))
@@ -159,7 +158,7 @@ namespace EngineHelpers
 
             if (audioFile.isValid())
                 if (auto newClip = track->insertWaveClip (file.getFileNameWithoutExtension(), file,
-                                                          { { {}, te::TimeDuration::fromSeconds (audioFile.getLength()) }, {} }, false))
+                                                          { { 0.0, audioFile.getLength() }, 0.0 }, false))
                     return newClip;
         }
 
@@ -172,13 +171,13 @@ namespace EngineHelpers
         auto& transport = clip.edit.getTransport();
         transport.setLoopRange (clip.getEditTimeRange());
         transport.looping = true;
-        transport.setPosition (0s);
+        transport.position = 0.0;
         transport.play (false);
 
         return clip;
     }
 
-    inline void togglePlay (te::Edit& edit)
+    void togglePlay (te::Edit& edit)
     {
         auto& transport = edit.getTransport();
 
@@ -188,7 +187,7 @@ namespace EngineHelpers
             transport.play (false);
     }
     
-    inline void toggleRecord (te::Edit& edit)
+    void toggleRecord (te::Edit& edit)
     {
         auto& transport = edit.getTransport();
         
@@ -198,7 +197,7 @@ namespace EngineHelpers
             transport.record (false);
     }
     
-    inline void armTrack (te::AudioTrack& t, bool arm, int position = 0)
+    void armTrack (te::AudioTrack& t, bool arm, int position = 0)
     {
         auto& edit = t.edit;
         for (auto instance : edit.getAllInputDevices())
@@ -206,7 +205,7 @@ namespace EngineHelpers
                 instance->setRecordingEnabled (t, arm);
     }
     
-    inline bool isTrackArmed (te::AudioTrack& t, int position = 0)
+    bool isTrackArmed (te::AudioTrack& t, int position = 0)
     {
         auto& edit = t.edit;
         for (auto instance : edit.getAllInputDevices())
@@ -216,7 +215,7 @@ namespace EngineHelpers
         return false;
     }
     
-    inline bool isInputMonitoringEnabled (te::AudioTrack& t, int position = 0)
+    bool isInputMonitoringEnabled (te::AudioTrack& t, int position = 0)
     {
         auto& edit = t.edit;
         for (auto instance : edit.getAllInputDevices())
@@ -226,7 +225,7 @@ namespace EngineHelpers
         return false;
     }
     
-    inline void enableInputMonitoring (te::AudioTrack& t, bool im, int position = 0)
+    void enableInputMonitoring (te::AudioTrack& t, bool im, int position = 0)
     {
         if (isInputMonitoringEnabled (t, position) != im)
         {
@@ -237,7 +236,7 @@ namespace EngineHelpers
         }
     }
     
-    inline bool trackHasInput (te::AudioTrack& t, int position = 0)
+    bool trackHasInput (te::AudioTrack& t, int position = 0)
     {
         auto& edit = t.edit;
         for (auto instance : edit.getAllInputDevices())
@@ -316,7 +315,7 @@ struct Thumbnail    : public Component
         {
             const float brightness = smartThumbnail.isOutOfDate() ? 0.4f : 0.66f;
             g.setColour (colour.withMultipliedBrightness (brightness));
-            smartThumbnail.drawChannels (g, r, true, { 0s, te::TimePosition::fromSeconds (smartThumbnail.getTotalLength()) }, 1.0f);
+            smartThumbnail.drawChannels (g, r, true, { 0.0, smartThumbnail.getTotalLength() }, 1.0f);
         }
     }
 
@@ -330,7 +329,7 @@ struct Thumbnail    : public Component
     {
         jassert (getWidth() > 0);
         const float proportion = e.position.x / getWidth();
-        transport.setPosition (toPosition (transport.getLoopRange().getLength()) * proportion);
+        transport.position = proportion * transport.getLoopRange().getLength();
     }
 
     void mouseUp (const MouseEvent&) override
@@ -346,8 +345,8 @@ private:
 
     void updateCursorPosition()
     {
-        const auto loopLength = transport.getLoopRange().getLength().inSeconds();
-        const auto proportion = loopLength == 0.0 ? 0.0 : transport.getPosition().inSeconds() / loopLength;
+        const double loopLength = transport.getLoopRange().getLength();
+        const double proportion = loopLength == 0.0 ? 0.0 : transport.getCurrentPosition() / loopLength;
 
         auto r = getLocalBounds().toFloat();
         const float x = r.getWidth() * float (proportion);

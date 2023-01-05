@@ -8,10 +8,10 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
-inline void dumpSegments (const juce::Array<AudioSegmentList::Segment>& segments)
+void dumpSegments (const juce::Array<AudioSegmentList::Segment>& segments)
 {
 
     DBG ("******************************************");
@@ -19,8 +19,8 @@ inline void dumpSegments (const juce::Array<AudioSegmentList::Segment>& segments
     {
         juce::String text;
 
-        text += "Start: " + juce::String (s.start.inSeconds()) + "(" + juce::String (s.startSample) + ")\n";
-        text += "Length: " + juce::String (s.length.inSeconds()) + "(" + juce::String (s.lengthSample) + ")\n";
+        text += "Start: " + juce::String (s.start) + "(" + juce::String (s.startSample) + ")\n";
+        text += "Length: " + juce::String (s.length) + "(" + juce::String (s.lengthSample) + ")\n";
         text += "Transpose: " + juce::String (s.transpose) + "\n";
         text += "===============================================";
 
@@ -29,7 +29,7 @@ inline void dumpSegments (const juce::Array<AudioSegmentList::Segment>& segments
 }
 
 //==============================================================================
-TimeRange AudioSegmentList::Segment::getRange() const                          { return { start, start + length }; }
+EditTimeRange AudioSegmentList::Segment::getRange() const                      { return { start, start + length }; }
 SampleRange AudioSegmentList::Segment::getSampleRange() const                  { return { startSample, startSample + lengthSample }; }
 
 float AudioSegmentList::Segment::getStretchRatio() const                       { return stretchRatio; }
@@ -75,7 +75,7 @@ AudioSegmentList::AudioSegmentList (AudioClipBase& acb, bool relTime, bool shoul
     : clip (acb), relativeTime (relTime)
 {
     if (shouldCrossfade)
-        crossfadeTime = TimeDuration::fromSeconds (static_cast<double> (clip.edit.engine.getPropertyStorage().getProperty (SettingID::crossfadeBlock, 12.0 / 1000.0)));
+        crossfadeTime = clip.edit.engine.getPropertyStorage().getProperty (SettingID::crossfadeBlock, 12.0 / 1000.0);
 
     auto& pm = acb.edit.engine.getProjectManager();
 
@@ -99,7 +99,7 @@ AudioSegmentList::AudioSegmentList (AudioClipBase& acb, bool relTime, bool shoul
 
 static float calcStretchRatio (const AudioSegmentList::Segment& seg, double sampleRate)
 {
-    double srcSamples = sampleRate * seg.getRange().getLength().inSeconds();
+    double srcSamples = sampleRate * seg.getRange().getLength();
 
     if (srcSamples > 0)
         return (float) (seg.getSampleRange().getLength() / srcSamples);
@@ -134,22 +134,22 @@ std::unique_ptr<AudioSegmentList> AudioSegmentList::create (AudioClipBase& acb, 
 
     if (in <= out)
     {
-        TimeRange region (std::max (TimePosition(), wtm.getWarpedStart()),
-                          wtm.getWarpEndMarkerTime());
+        EditTimeRange region (std::max (0.0, wtm.getWarpedStart()),
+                              wtm.getWarpEndMarkerTime());
 
-        juce::Array<TimeRange> warpTimeRegions;
+        juce::Array<EditTimeRange> warpTimeRegions;
         callBlocking ([&] { warpTimeRegions = wtm.getWarpTimeRegions (region); });
-        auto position = warpTimeRegions.size() > 0 ? warpTimeRegions.getUnchecked (0).getStart() : TimePosition();
+        double position = warpTimeRegions.size() > 0 ? warpTimeRegions.getUnchecked (0).getStart() : 0.0;
 
         for (auto warpRegion : warpTimeRegions)
         {
-            TimeRange sourceRegion (wtm.warpTimeToSourceTime (warpRegion.getStart()),
-                                    wtm.warpTimeToSourceTime (warpRegion.getEnd()));
+            EditTimeRange sourceRegion (wtm.warpTimeToSourceTime (warpRegion.getStart()),
+                                        wtm.warpTimeToSourceTime (warpRegion.getEnd()));
 
             Segment seg;
 
-            seg.startSample    = tracktion::toSamples (sourceRegion.getStart(), wi.sampleRate) + in;
-            seg.lengthSample   = tracktion::toSamples (sourceRegion.getEnd(), wi.sampleRate) + in - seg.startSample;
+            seg.startSample    = static_cast<SampleCount> (sourceRegion.getStart() * wi.sampleRate + 0.5) + in;
+            seg.lengthSample   = static_cast<SampleCount> (sourceRegion.getEnd() * wi.sampleRate + 0.5) + in - seg.startSample;
             seg.start          = position;
             seg.length         = warpRegion.getLength();
             seg.stretchRatio   = calcStretchRatio (seg, wi.sampleRate);
@@ -157,14 +157,14 @@ std::unique_ptr<AudioSegmentList> AudioSegmentList::create (AudioClipBase& acb, 
             seg.fadeOut        = false;
             seg.transpose      = 0.0f;
 
-            position = position + warpRegion.getLength();
+            position += warpRegion.getLength();
             jassert (seg.startSample >= in);
             jassert (seg.startSample + seg.lengthSample <= out);
 
             asl->segments.add (seg);
         }
 
-        asl->crossfadeTime = 0.01s;
+        asl->crossfadeTime = 0.01;
         asl->crossFadeSegments();
     }
 
@@ -196,27 +196,27 @@ void AudioSegmentList::build (bool crossfade)
 
     if (relativeTime)
     {
-        auto offset = toDuration (getStart());
+        auto offset = getStart();
 
         for (auto& s : segments)
-            s.start = s.start - offset;
+            s.start -= offset;
     }
 }
 
-void AudioSegmentList::chopSegment (Segment& seg, TimePosition at, int insertPos)
+void AudioSegmentList::chopSegment (Segment& seg, double at, int insertPos)
 {
     Segment newSeg;
 
     newSeg.start  = at;
-    newSeg.length = seg.getRange().getEnd() - newSeg.getRange().getStart();
+    newSeg.length = seg.getRange().end - newSeg.getRange().start;
 
-    newSeg.transpose = getPitchAt (newSeg.start + 0.0001s);
+    newSeg.transpose = getPitchAt (newSeg.start + 0.0001);
     newSeg.stretchRatio = (float) clip.getSpeedRatio();
 
     newSeg.fadeIn  = true;
     newSeg.fadeOut = seg.fadeOut;
 
-    newSeg.lengthSample = juce::roundToInt (seg.lengthSample * newSeg.length.inSeconds() / seg.length.inSeconds());
+    newSeg.lengthSample = juce::roundToInt (seg.lengthSample * newSeg.length / seg.length);
     newSeg.startSample  = seg.getSampleRange().getEnd() - newSeg.lengthSample;
 
     seg.length = seg.length - newSeg.length;
@@ -225,8 +225,8 @@ void AudioSegmentList::chopSegment (Segment& seg, TimePosition at, int insertPos
     seg.fadeOut = true;
     seg.followedBySilence = false;
 
-    jassert (newSeg.length > 0.01s);
-    jassert (seg.length > 0.01s);
+    jassert (newSeg.length > 0.01);
+    jassert (seg.length > 0.01);
 
     segments.insert (insertPos, newSeg);
 }
@@ -246,15 +246,15 @@ void AudioSegmentList::buildNormal (bool crossfade)
     {
         auto clipLoopLen = clip.getLoopLength();
 
-        if (clipLoopLen <= 0s)
+        if (clipLoopLen <= 0)
             return;
 
-        auto startSamp  = std::max ((SampleCount) 0, (SampleCount) (rate * clip.getLoopStart().inSeconds()));
-        auto lengthSamp = std::max ((SampleCount) 0, (SampleCount) (rate * clipLoopLen.inSeconds()));
+        auto startSamp  = std::max ((SampleCount) 0, (SampleCount) (rate * clip.getLoopStart()));
+        auto lengthSamp = std::max ((SampleCount) 0, (SampleCount) (rate * clipLoopLen));
 
         for (int i = 0; ; ++i)
         {
-            auto startTime = clipPos.getStart() + clipLoopLen * i - clipPos.getOffset();
+            auto startTime = clipPos.getStart() + i * clipLoopLen - clipPos.getOffset();
 
             if (startTime >= clipPos.getEnd())
                 break;
@@ -271,7 +271,7 @@ void AudioSegmentList::buildNormal (bool crossfade)
 
             if (startTime < clipPos.getStart())
             {
-                auto diff = (SampleCount) ((clipPos.getStart() - startTime).inSeconds() * rate);
+                auto diff = (SampleCount) ((clipPos.getStart() - startTime) * rate);
 
                 seg.startSample += diff;
                 seg.lengthSample -= diff;
@@ -280,7 +280,7 @@ void AudioSegmentList::buildNormal (bool crossfade)
 
             if (end > clipPos.getEnd())
             {
-                auto diff = (SampleCount) ((end - clipPos.getEnd()).inSeconds() * rate);
+                auto diff = (SampleCount) ((end - clipPos.getEnd()) * rate);
                 seg.lengthSample -= diff;
                 end = clipPos.getEnd();
             }
@@ -291,7 +291,7 @@ void AudioSegmentList::buildNormal (bool crossfade)
             seg.start = startTime;
             seg.length = end - startTime;
 
-            seg.transpose = getPitchAt (startTime + 0.0001s);
+            seg.transpose = getPitchAt (startTime + 0.0001);
             seg.stretchRatio = (float) clip.getSpeedRatio();
 
             seg.fadeIn  = true;
@@ -302,7 +302,7 @@ void AudioSegmentList::buildNormal (bool crossfade)
             {
                 auto& prev = segments.getReference (segments.size() - 1);
 
-                if (tracktion::abs (prev.getRange().getEnd() - seg.getRange().getStart()) < 0.01s)
+                if (std::abs (prev.getRange().getEnd() - seg.getRange().getStart()) < 0.01)
                     prev.followedBySilence = false;
             }
 
@@ -323,10 +323,10 @@ void AudioSegmentList::buildNormal (bool crossfade)
         seg.start        = clipPos.getStart();
         seg.length       = clipPos.getLength();
 
-        seg.startSample  = juce::jlimit ((SampleCount) 0, wi.lengthInSamples, (SampleCount) (clipPos.getOffset().inSeconds() * rate));
-        seg.lengthSample = juce::jlimit ((SampleCount) 0, wi.lengthInSamples, (SampleCount) (clipPos.getLength().inSeconds() * rate));
+        seg.startSample  = juce::jlimit ((SampleCount) 0, wi.lengthInSamples, (SampleCount) (clipPos.getOffset() * rate));
+        seg.lengthSample = juce::jlimit ((SampleCount) 0, wi.lengthInSamples, (SampleCount) (clipPos.getLength() * rate));
 
-        seg.transpose    = getPitchAt (clipPos.getStart() + 0.0001s);
+        seg.transpose    = getPitchAt (clipPos.getStart() + 0.0001);
         seg.stretchRatio = (float) clip.getSpeedRatio();
 
         seg.fadeIn       = false;
@@ -334,7 +334,7 @@ void AudioSegmentList::buildNormal (bool crossfade)
 
         seg.followedBySilence = true;
 
-        if (seg.length > 0s)
+        if (seg.length > 0)
             segments.add (seg);
     }
 
@@ -350,14 +350,14 @@ void AudioSegmentList::buildNormal (bool crossfade)
 
             auto pitchTm = pitch->getPosition().getStart();
 
-            if (pitchTm > getStart() + 0.01s && pitchTm < getEnd() - 0.01s)
+            if (pitchTm > getStart() + 0.01 && pitchTm < getEnd() - 0.01)
             {
                 for (int j = 0; j < segments.size(); ++j)
                 {
                     auto& seg = segments.getReference (j);
 
-                    if (seg.getRange().reduced (0.01s).contains (pitchTm)
-                         && std::abs (getPitchAt (pitchTm) - getPitchAt (seg.getRange().getStart())) > 0.0001)
+                    if (seg.getRange().reduced (0.01).contains (pitchTm)
+                         && std::abs (getPitchAt (pitchTm) - getPitchAt (seg.getRange().start)) > 0.0001)
                     {
                         chopSegment (seg, pitchTm, j + 1);
                         break;
@@ -379,19 +379,18 @@ void AudioSegmentList::chopSegmentsForChords()
     {
         auto& ts = clip.edit.tempoSequence;
 
-        BeatPosition pos;
-
+        double pos = 0.0;
         for (auto& p : progression)
         {
-            auto chordTime = ts.toTime (pos);
+            double chordTime = ts.beatsToTime (pos);
 
-            if (chordTime > getStart() + 0.01s && chordTime < getEnd() - 0.01s)
+            if (chordTime > getStart() + 0.01 && chordTime < getEnd() - 0.01)
             {
                 for (int j = 0; j < segments.size(); ++j)
                 {
                     auto& seg = segments.getReference (j);
 
-                    if (seg.getRange().reduced (0.01s).contains (chordTime))
+                    if (seg.getRange().reduced (0.01).contains (chordTime))
                     {
                         chopSegment (seg, chordTime, j + 1);
                         break;
@@ -400,7 +399,7 @@ void AudioSegmentList::chopSegmentsForChords()
 
             }
 
-            pos = pos + p->lengthInBeats;
+            pos += p->lengthInBeats;
         }
     }
 }
@@ -445,15 +444,15 @@ static juce::Array<SampleCount> trimInitialSyncSamples (const juce::Array<Sample
     return result;
 }
 
-void AudioSegmentList::initialiseSegment (Segment& seg, BeatPosition startBeat, BeatPosition endBeat, double sampleRate)
+void AudioSegmentList::initialiseSegment (Segment& seg, double startBeat, double endBeat, double sampleRate)
 {
     auto& ts = clip.edit.tempoSequence;
-    seg.start = ts.toTime (startBeat);
-    seg.length = ts.toTime (endBeat) - seg.start;
+    seg.start = ts.beatsToTime (startBeat);
+    seg.length = ts.beatsToTime (endBeat) - seg.start;
     seg.stretchRatio = calcStretchRatio (seg, sampleRate);
     seg.fadeIn = false;
     seg.fadeOut = false;
-    seg.transpose = getPitchAt (seg.start + 0.0001s);
+    seg.transpose = getPitchAt (seg.start + 0.0001);
 }
 
 void AudioSegmentList::removeExtraSegments()
@@ -468,19 +467,19 @@ void AudioSegmentList::removeExtraSegments()
         {
             segments.remove(i);
         }
-        else if (segTime.getStart() < clipTime.getEnd() && segTime.getEnd() > clipTime.getEnd())
+        else if (segTime.start < clipTime.end && segTime.end > clipTime.end)
         {
             auto oldLen       = seg.length;
             seg.length        = getEnd() - seg.start;
             auto ratio        = oldLen / seg.length;
             seg.lengthSample  = static_cast<SampleCount> (seg.lengthSample / ratio + 0.5);
         }
-        else if (segTime.getStart() < clipTime.getStart() && segTime.getEnd() > clipTime.getStart())
+        else if (segTime.start < clipTime.start && segTime.end > clipTime.start)
         {
             auto oldLen       = seg.length;
-            auto delta        = getStart() - segTime.getStart();
-            seg.start         = seg.start + delta;
-            seg.length        = seg.length - delta;
+            auto delta        = getStart() - segTime.start;
+            seg.start        += delta;
+            seg.length       -= delta;
             auto ratio        = oldLen / segTime.getLength();
             auto oldEndSamp   = seg.getSampleRange().getEnd();
             seg.lengthSample  = static_cast<SampleCount> (seg.lengthSample / ratio + 0.5);
@@ -498,10 +497,10 @@ void AudioSegmentList::mergeSegments (double sampleRate)
 
         if (std::abs (s1.stretchRatio - s2.stretchRatio) < 0.0001
              && std::abs (s1.transpose - s2.transpose) < 0.0001
-             && tracktion::abs (s1.start + s1.length - s2.start) < 0.0001s
+             && std::abs (s1.start + s1.length - s2.start) < 0.0001
              && s1.startSample + s1.lengthSample == s2.startSample)
         {
-            s1.length = s1.length + s2.length;
+            s1.length       += s2.length;
             s1.lengthSample += s2.lengthSample;
             s1.stretchRatio = calcStretchRatio (s1, sampleRate);
 
@@ -518,11 +517,11 @@ void AudioSegmentList::crossFadeSegments()
 
         // fade out
         if (i < segments.size() - 1
-             && (tracktion::abs (s.getRange().getEnd() - segments.getReference (i + 1).start) < 0.0001s))
+             && (std::abs (s.getRange().getEnd() - segments.getReference (i + 1).start) < 0.0001))
         {
             auto oldLen = s.length;
             s.fadeOut = true;
-            s.length = s.length + crossfadeTime;
+            s.length += crossfadeTime;
             auto ratio = oldLen / s.length;
             s.lengthSample = static_cast<SampleCount> (s.lengthSample / ratio + 0.5);
             s.followedBySilence = false;
@@ -559,26 +558,26 @@ void AudioSegmentList::buildAutoTempo (bool crossfade)
     {
         auto loopLengthBeats = clip.getLoopLengthBeats();
 
-        if (loopLengthBeats == BeatDuration())
+        if (loopLengthBeats == 0)
             return;
 
         auto offsetBeat = clip.getOffsetInBeats();
 
         while (offsetBeat > loopLengthBeats)
-            offsetBeat = offsetBeat - loopLengthBeats;
+            offsetBeat -= loopLengthBeats;
 
-        if (tracktion::abs (offsetBeat).inBeats() < 0.00001)
-            offsetBeat = BeatDuration();
+        if (std::abs (offsetBeat) < 0.00001)
+            offsetBeat = 0;
 
         auto loopStartBeat = clip.getLoopStartBeats() + offsetBeat;
 
-        auto offsetTime   = TimePosition::fromSeconds (loopStartBeat.inBeats() / li.getBeatsPerSecond (wi));
-        auto offsetSample = tracktion::toSamples (offsetTime, wi.sampleRate) + range.getStart();
+        auto offsetTime   = loopStartBeat / li.getBeatsPerSecond (wi);
+        auto offsetSample = static_cast<SampleCount> (offsetTime * wi.sampleRate + 0.5) + range.getStart();
 
         auto syncSamplesSubset = trimInitialSyncSamples (syncSamples, offsetSample);
 
-        BeatPosition beatPos;
-        BeatPosition loopEndBeat = toPosition (loopLengthBeats) - offsetBeat;
+        double beatPos = 0;
+        double loopEndBeat = loopLengthBeats - offsetBeat;
 
         for (int i = 0; i < syncSamplesSubset.size(); ++i)
         {
@@ -589,10 +588,10 @@ void AudioSegmentList::buildAutoTempo (bool crossfade)
                                                                     : (syncSamplesSubset[i + 1]) - seg.startSample);
 
             auto startBeat = beatPos;
-            beatPos = beatPos + BeatDuration::fromBeats (TimeDuration::fromSamples (seg.lengthSample, wi.sampleRate).inSeconds() * li.getBeatsPerSecond (wi));
+            beatPos += (seg.lengthSample / wi.sampleRate) * li.getBeatsPerSecond (wi);
             auto endBeat = beatPos;
 
-            initialiseSegment (seg, clipStartBeat + toDuration (startBeat), clipStartBeat + toDuration (endBeat), wi.sampleRate);
+            initialiseSegment (seg, clipStartBeat + startBeat, clipStartBeat + endBeat, wi.sampleRate);
 
             if (startBeat >= loopEndBeat)
                 break;
@@ -602,7 +601,7 @@ void AudioSegmentList::buildAutoTempo (bool crossfade)
                 auto oldLength = endBeat     - startBeat;
                 auto newLength = loopEndBeat - startBeat;
 
-                seg.length = ts.toTime (clipStartBeat + toDuration (loopEndBeat)) - seg.start;
+                seg.length = ts.beatsToTime (clipStartBeat + loopEndBeat) - seg.start;
                 seg.lengthSample = static_cast<SampleCount> (seg.lengthSample * (newLength / oldLength) + 0.5);
 
                 jassert (seg.startSample >= range.getStart());
@@ -618,15 +617,15 @@ void AudioSegmentList::buildAutoTempo (bool crossfade)
 
         loopStartBeat = clip.getLoopStartBeats();
 
-        offsetTime   = TimePosition::fromSeconds (loopStartBeat.inBeats() / li.getBeatsPerSecond (wi));
-        offsetSample = tracktion::toSamples (offsetTime, wi.sampleRate);
+        offsetTime   = loopStartBeat / li.getBeatsPerSecond (wi);
+        offsetSample = static_cast<SampleCount> (offsetTime * wi.sampleRate + 0.5);
 
         syncSamplesSubset = trimInitialSyncSamples (syncSamples, offsetSample);
 
         beatPos = loopEndBeat;
         loopEndBeat = beatPos + loopLengthBeats;
 
-        while (beatPos < toPosition (clip.getLengthInBeats()))
+        while (beatPos < clip.getLengthInBeats())
         {
             for (int i = 0; i < syncSamplesSubset.size(); ++i)
             {
@@ -637,10 +636,10 @@ void AudioSegmentList::buildAutoTempo (bool crossfade)
                                                                         : (syncSamplesSubset[i + 1]) - seg.startSample);
 
                 auto startBeat = beatPos;
-                beatPos = beatPos + BeatDuration::fromBeats ((seg.lengthSample / wi.sampleRate) * li.getBeatsPerSecond (wi));
+                beatPos += (seg.lengthSample / wi.sampleRate) * li.getBeatsPerSecond (wi);
                 auto endBeat = beatPos;
 
-                initialiseSegment (seg, clipStartBeat + toDuration (startBeat), clipStartBeat + toDuration (endBeat), wi.sampleRate);
+                initialiseSegment (seg, clipStartBeat + startBeat, clipStartBeat + endBeat, wi.sampleRate);
 
                 if (startBeat >= loopEndBeat)
                     break;
@@ -650,7 +649,7 @@ void AudioSegmentList::buildAutoTempo (bool crossfade)
                     auto oldLength = endBeat     - startBeat;
                     auto newLength = loopEndBeat - startBeat;
 
-                    seg.length = ts.toTime (clipStartBeat + toDuration (loopEndBeat)) - seg.start;
+                    seg.length = ts.beatsToTime (clipStartBeat + loopEndBeat) - seg.start;
                     seg.lengthSample = static_cast<SampleCount> (seg.lengthSample * (newLength / oldLength) + 0.5);
 
                     jassert (seg.startSample >= range.getStart());
@@ -670,9 +669,9 @@ void AudioSegmentList::buildAutoTempo (bool crossfade)
     }
     else
     {
-        auto offsetTime = TimeDuration::fromSeconds (clip.getOffsetInBeats().inBeats() / li.getBeatsPerSecond (wi));
-        auto offsetSample = tracktion::toSamples (offsetTime, wi.sampleRate) + range.getStart();
-        BeatPosition beatPos;
+        auto offsetTime = clip.getOffsetInBeats() / li.getBeatsPerSecond (wi);
+        auto offsetSample = static_cast<SampleCount> (offsetTime * wi.sampleRate + 0.5) + range.getStart();
+        double beatPos = 0;
 
         syncSamples = trimInitialSyncSamples (syncSamples, offsetSample);
 
@@ -685,10 +684,10 @@ void AudioSegmentList::buildAutoTempo (bool crossfade)
                                                               : (syncSamples[i + 1]) - seg.startSample);
 
             auto startBeat = beatPos;
-            beatPos = beatPos + BeatDuration::fromBeats ((seg.lengthSample / wi.sampleRate) * li.getBeatsPerSecond (wi));
+            beatPos += (seg.lengthSample / wi.sampleRate) * li.getBeatsPerSecond (wi);
             auto endBeat = beatPos;
 
-            initialiseSegment (seg, clipStartBeat + toDuration (startBeat), clipStartBeat + toDuration (endBeat), wi.sampleRate);
+            initialiseSegment (seg, clipStartBeat + startBeat, clipStartBeat + endBeat, wi.sampleRate);
 
             jassert (seg.startSample >= range.getStart());
             jassert (seg.startSample + seg.lengthSample <= range.getEnd());
@@ -704,23 +703,23 @@ void AudioSegmentList::buildAutoTempo (bool crossfade)
         crossFadeSegments();
 }
 
-TimePosition AudioSegmentList::getStart() const
+double AudioSegmentList::getStart() const
 {
     if (! segments.isEmpty())
         return segments.getReference (0).getRange().getStart();
 
-    return 0.0s;
+    return 0.0;
 }
 
-TimePosition AudioSegmentList::getEnd() const
+double AudioSegmentList::getEnd() const
 {
     if (! segments.isEmpty())
         return segments.getReference (segments.size() - 1).getRange().getEnd();
 
-    return 0.0s;
+    return 0.0;
 }
 
-float AudioSegmentList::getPitchAt (TimePosition t)
+float AudioSegmentList::getPitchAt (double t)
 {
     if (clip.getAutoPitch() && clip.getAutoPitchMode() == AudioClipBase::chordTrackMono && progression.size() > 0)
     {
@@ -729,9 +728,9 @@ float AudioSegmentList::getPitchAt (TimePosition t)
         auto& ps = clip.edit.pitchSequence;
         auto& pitchSetting = ps.getPitchAt (t);
 
-        auto beat = ts.toBeats (t);
-        BeatPosition pos;
+        double beat = ts.timeToBeats (t);
 
+        double pos = 0.0;
         for (auto& p : progression)
         {
             if (beat >= pos && beat < pos + p->lengthInBeats)
@@ -758,7 +757,7 @@ float AudioSegmentList::getPitchAt (TimePosition t)
                 }
             }
 
-            pos = pos + p->lengthInBeats.get();
+            pos += p->lengthInBeats;
         }
     }
 
@@ -779,4 +778,4 @@ float AudioSegmentList::getPitchAt (TimePosition t)
     return clip.getPitchChange();
 }
 
-}} // namespace tracktion { inline namespace engine
+}

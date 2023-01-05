@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -31,17 +31,17 @@ public:
     const juce::Array<PitchSetting*>& getPitches() const;
     int getNumPitches() const;
     PitchSetting* getPitch (int index) const;
-    PitchSetting& getPitchAt (TimePosition) const;
-    PitchSetting& getPitchAtBeat (BeatPosition) const;
+    PitchSetting& getPitchAt (double time) const;
+    PitchSetting& getPitchAtBeat (double beat) const;
     int indexOfPitch (const PitchSetting*) const;
 
-    PitchSetting::Ptr insertPitch (TimePosition);
-    PitchSetting::Ptr insertPitch (BeatPosition, int pitch);
+    PitchSetting::Ptr insertPitch (double time);
+    PitchSetting::Ptr insertPitch (double beatPos, int pitch);
 
-    void movePitchStart (PitchSetting&, BeatDuration deltaBeats, bool snapToBeat);
+    void movePitchStart (PitchSetting&, double deltaBeats, bool snapToBeat);
 
     /** Inserts space in to a sequence, shifting all PitchSettings. */
-    void insertSpaceIntoSequence (TimePosition, TimeDuration amountOfSpace, bool snapToBeat);
+    void insertSpaceIntoSequence (double time, double amountOfSpaceInSeconds, bool snapToBeat);
 
     void sortEvents();
 
@@ -52,12 +52,12 @@ private:
     std::unique_ptr<PitchList> list;
     Edit* edit = nullptr;
 
-    int indexOfPitchAt (TimePosition) const;
-    int indexOfNextPitchAt (TimePosition) const;
+    int indexOfPitchAt (double t) const;
+    int indexOfNextPitchAt (double t) const;
 
     juce::UndoManager* getUndoManager() const;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (PitchSequence)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

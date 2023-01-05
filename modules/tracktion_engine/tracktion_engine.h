@@ -19,7 +19,7 @@
 
   ID:               tracktion_engine
   vendor:           Tracktion Corporation
-  version:          2.0.0
+  version:          1.2.0
   name:             The Tracktion audio engine
   description:      Classes for manipulating and playing Tracktion projects
   website:          http://www.tracktion.com
@@ -34,6 +34,10 @@
 #pragma once
 #define TRACKTION_ENGINE_H_INCLUDED
 
+#if ! JUCE_MODAL_LOOPS_PERMITTED
+// #error "You must define JUCE_MODAL_LOOPS_PERMITTED=1 to use Tracktion Engine"
+#endif
+
 #if ! JUCE_PROJUCER_LIVE_BUILD
 
 #include <sys/stat.h>
@@ -45,7 +49,6 @@
 #include <atomic>
 #include <random>
 #include <optional>
-#include <variant>
 
 #include <juce_audio_basics/juce_audio_basics.h>
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -57,12 +60,10 @@
  #include <choc/audio/choc_SampleBuffers.h>
  #include <choc/audio/choc_MIDI.h>
  #include <choc/containers/choc_SingleReaderSingleWriterFIFO.h>
- #include <choc/containers/choc_NonAllocatingStableSort.h>
 #else
  #include "../3rd_party/choc/audio/choc_SampleBuffers.h"
  #include "../3rd_party/choc/audio/choc_MIDI.h"
  #include "../3rd_party/choc/containers/choc_SingleReaderSingleWriterFIFO.h"
- #include "../3rd_party/choc/containers/choc_NonAllocatingStableSort.h"
 #endif
 
 #undef __TEXT
@@ -178,24 +179,6 @@
  #define TRACKTION_ENABLE_TIMESTRETCH_SOUNDTOUCH 0
 #endif
 
-/** Config: TRACKTION_ENABLE_REALTIME_TIMESTRETCHING
-    Enables real-time time-stretching without having to generate proxy files.
-    N.B. This is experimental and not ready for production yet.
-*/
-#ifndef TRACKTION_ENABLE_REALTIME_TIMESTRETCHING
- #define TRACKTION_ENABLE_REALTIME_TIMESTRETCHING 1
-#endif
-
-/** Config: TRACKTION_BUILD_LIBSAMPLERATE
-    Enables building of the libsamplerate sources.
-    For simplicity these are included but if you are using these elsewhere in your
-    code you can disable building them. If you disable building them, you should
-    link them yourself and include samplerate.h in the header search paths.
-*/
-#ifndef TRACKTION_BUILD_LIBSAMPLERATE
- #define TRACKTION_BUILD_LIBSAMPLERATE 1
-#endif
-
 /** Config: TRACKTION_ENABLE_ABLETON_LINK
     Enables Ableton Link support.
     You must have Link in your search path if you enable this.
@@ -261,19 +244,14 @@
     jassert (juce::MessageManager::getInstance()->currentThreadHasLockedMessageManager());
 
 //==============================================================================
-namespace tracktion { inline namespace graph
+namespace tracktion_graph
 {
     class PlayHead;
-}}
+}
 
 //==============================================================================
-#include "../tracktion_core/tracktion_core.h"
-
-
-//==============================================================================
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
-    class EngineBehaviour;
     class Engine;
     class DeviceManager;
     class MidiProgramManager;
@@ -305,6 +283,7 @@ namespace tracktion { inline namespace engine
     class CompFactory;
     class WarpTimeFactory;
     class TempoSequence;
+    class TempoSequencePosition;
     class WarpTimeManager;
     class ControlSurface;
     struct AudioFileInfo;
@@ -387,12 +366,10 @@ namespace tracktion { inline namespace engine
     class Clipboard;
     class PropertyStorage;
     class TrackOutput;
-}} // namespace tracktion { inline namespace engine
-
+}
 
 //==============================================================================
 #include "utilities/tracktion_AppFunctions.h"
-#include "utilities/tracktion_AtomicWrapper.h"
 #include "utilities/tracktion_Identifiers.h"
 #include "utilities/tracktion_ValueTreeUtilities.h"
 #include "utilities/tracktion_CrashTracer.h"
@@ -409,7 +386,7 @@ namespace tracktion { inline namespace engine
 #include "selection/tracktion_Selectable.h"
 #include "selection/tracktion_SelectableClass.h"
 #include "selection/tracktion_SelectionManager.h"
-#include "model/tracks/tracktion_EditTime.h"
+#include "model/tracks/tracktion_EditTimeRange.h"
 #include "utilities/tracktion_BackgroundJobs.h"
 #include "utilities/tracktion_MiscUtilities.h"
 #include "utilities/tracktion_TemporaryFileManager.h"
@@ -469,7 +446,9 @@ namespace tracktion { inline namespace engine
 
 #include "utilities/tracktion_PropertyStorage.h"
 #include "utilities/tracktion_UIBehaviour.h"
+#include "utilities/tracktion_EngineBehaviour.h"
 #include "utilities/tracktion_Engine.h"
+#include "utilities/tracktion_Pitch.h"
 
 #include "playback/tracktion_LevelMeasurer.h"
 
@@ -485,6 +464,7 @@ namespace tracktion { inline namespace engine
 #include "plugins/effects/tracktion_Equaliser.h"
 
 #include "model/edit/tracktion_EditSnapshot.h"
+#include "model/edit/tracktion_EditFileOperations.h"
 #include "model/edit/tracktion_EditInsertPoint.h"
 #include "model/tracks/tracktion_TrackItem.h"
 #include "model/tracks/tracktion_Track.h"
@@ -495,7 +475,6 @@ namespace tracktion { inline namespace engine
 #include "model/edit/tracktion_PitchSetting.h"
 #include "model/edit/tracktion_PitchSequence.h"
 #include "model/edit/tracktion_Edit.h"
-#include "model/edit/tracktion_EditFileOperations.h"
 
 #include "playback/tracktion_TransportControl.h"
 #include "playback/tracktion_AbletonLink.h"
@@ -509,9 +488,6 @@ namespace tracktion { inline namespace engine
 #include "model/edit/tracktion_SourceFileReference.h"
 #include "model/clips/tracktion_Clip.h"
 #include "model/edit/tracktion_EditUtilities.h"
-
-#include "utilities/tracktion_EngineBehaviour.h"
-#include "utilities/tracktion_Pitch.h"
 
 #include "audio_files/tracktion_AudioFileCache.h"
 #include "audio_files/tracktion_Thumbnail.h"

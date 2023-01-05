@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /**
@@ -19,8 +19,7 @@ class Track   : public EditItem,
                 public Selectable,
                 public juce::ReferenceCountedObject,
                 public MacroParameterElement,
-                protected juce::ValueTree::Listener,
-                protected juce::AsyncUpdater
+                protected juce::ValueTree::Listener
 {
 public:
     /** Creates a track with a given state. */
@@ -207,17 +206,17 @@ public:
     virtual int indexOfTrackItem (TrackItem*) const             { return -1; }
 
     /** Should return the index of the TrackItem after this time. */
-    virtual int getIndexOfNextTrackItemAt (TimePosition)        { return -1; }
+    virtual int getIndexOfNextTrackItemAt (double /*time*/)     { return -1; }
 
     /** Should return the TrackItem after this time. */
-    virtual TrackItem* getNextTrackItemAt (TimePosition)        { return {}; }
+    virtual TrackItem* getNextTrackItemAt (double /*time*/)     { return {}; }
 
     //==============================================================================
     /** Should insert empty space in to the track, shuffling down any items after the time.
         @param time             The time point in seconds to insert at
         @param amountOfSpace    The duration of time to insert
     */
-    virtual void insertSpaceIntoTrack (TimePosition, TimeDuration);
+    virtual void insertSpaceIntoTrack (double time, double amountOfSpace);
 
     //==============================================================================
     /** Returns the state of the parent Track. */
@@ -405,8 +404,6 @@ protected:
     void valueTreeChildOrderChanged (juce::ValueTree&, int, int) override {}
     /** @internal */
     void valueTreeParentChanged (juce::ValueTree&) override;
-    /** @internal */
-    void handleAsyncUpdate() override;
 
     /** Returns whether this Track should be audible.
         Subclasses can override for custom behaviour.
@@ -441,4 +438,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Track)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

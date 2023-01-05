@@ -8,19 +8,19 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 PluginRenderContext::PluginRenderContext (juce::AudioBuffer<float>* buffer,
                                           const juce::AudioChannelSet& bufferChannels,
                                           int bufferStart, int bufferSize,
                                           MidiMessageArray* midiBuffer, double midiOffset,
-                                          TimeRange editTimeRange, bool playing, bool scrubbing, bool rendering,
+                                          double editStartTime, bool playing, bool scrubbing, bool rendering,
                                           bool shouldAllowBypassedProcessing) noexcept
     : destBuffer (buffer), destBufferChannels (bufferChannels),
       bufferStartSample (bufferStart), bufferNumSamples (bufferSize),
       bufferForMidiMessages (midiBuffer), midiBufferOffset (midiOffset),
-      editTime (editTimeRange),
+      editTime (editStartTime),
       isPlaying (playing), isScrubbing (scrubbing), isRendering (rendering),
       allowBypassedProcessing (shouldAllowBypassedProcessing)
 {}
@@ -523,6 +523,7 @@ void Plugin::deleteFromParent()
 
 Track* Plugin::getOwnerTrack() const
 {
+    jassert (getReferenceCount() > 0);
     return getTrackContainingPlugin (edit, this);
 }
 
@@ -669,14 +670,14 @@ void Plugin::applyToBufferWithAutomation (const PluginRenderContext& pc)
             SCOPED_REALTIME_CHECK
             auto& tc = edit.getTransport();
             updateParameterStreams (tc.isPlayContextActive() && ! pc.isRendering
-                                        ? tc.getPosition()
-                                        : pc.editTime.getStart());
+                                        ? tc.getCurrentPosition()
+                                        : pc.editTime);
             applyToBuffer (pc);
         }
         else
         {
             SCOPED_REALTIME_CHECK
-            updateParameterStreams (pc.editTime.getStart());
+            updateParameterStreams (pc.editTime);
             applyToBuffer (pc);
         }
     }
@@ -926,4 +927,4 @@ void Plugin::flushPluginStateToValueTree()
     }
 }
 
-}} // namespace tracktion { inline namespace engine
+}

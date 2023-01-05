@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -23,16 +23,16 @@ namespace tracktion { inline namespace engine
     in to the InsertPlugin's PluginNode and creates a dependency on the
     InsertSendNode and InsertReturnNode to ensure they are processed first.
 */
-class InsertSendReturnDependencyNode final  : public tracktion::graph::Node
+class InsertSendReturnDependencyNode final  : public tracktion_graph::Node
 {
 public:
     InsertSendReturnDependencyNode (std::unique_ptr<Node>, InsertPlugin&);
 
     //==============================================================================
-    tracktion::graph::NodeProperties getNodeProperties() override;
+    tracktion_graph::NodeProperties getNodeProperties() override;
     std::vector<Node*> getDirectInputNodes() override;
     bool transform (Node&) override;
-    void prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo&) override;
+    void prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo&) override;
     bool isReadyToProcess() override;
     void process (ProcessContext&) override;
 
@@ -50,7 +50,7 @@ private:
     The send node picks up audio/MIDI data from the InsertPlugin and then its output will be
     sent to the corresponding OutputDevice..
 */
-class InsertSendNode final  : public tracktion::graph::Node
+class InsertSendNode final  : public tracktion_graph::Node
 {
 public:
     InsertSendNode (InsertPlugin&);
@@ -58,9 +58,9 @@ public:
     InsertPlugin& getInsert() const     { return owner; }
     
     //==============================================================================
-    tracktion::graph::NodeProperties getNodeProperties() override;
+    tracktion_graph::NodeProperties getNodeProperties() override;
     std::vector<Node*> getDirectInputNodes() override;
-    void prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo&) override;
+    void prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo&) override;
     bool isReadyToProcess() override;
     void process (ProcessContext&) override;
 
@@ -70,4 +70,4 @@ private:
     Plugin::Ptr plugin;
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

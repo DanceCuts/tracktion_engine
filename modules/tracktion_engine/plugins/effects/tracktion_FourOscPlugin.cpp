@@ -7,7 +7,7 @@
 */
 
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -1458,8 +1458,9 @@ void FourOscPlugin::applyToBuffer (const PluginRenderContext& fc)
         SCOPED_REALTIME_CHECK
 
         // find the tempo
-        currentPos.set (fc.editTime.getStart());
-        currentTempo = float (currentPos.getTempo());
+        double now = fc.editTime;
+        currentPos.setTime (now);
+        currentTempo = float (currentPos.getCurrentTempo().bpm);
 
         // Handle all notes off first
         if (fc.bufferForMidiMessages != nullptr)
@@ -1806,4 +1807,4 @@ float FourOscPlugin::paramValue (AutomatableParameter::Ptr param)
     return param->valueRange.convertFrom0to1 (smoothItr->second.getCurrentValue());
 }
 
-}} // namespace tracktion { inline namespace engine
+}

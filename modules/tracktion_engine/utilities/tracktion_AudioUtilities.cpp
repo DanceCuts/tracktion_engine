@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 void sanitiseValues (juce::AudioBuffer<float>& buffer, int start, int numSamps,
@@ -633,4 +633,4 @@ static PanLawTests panLawTests;
 
 #endif // TRACKTION_UNIT_TESTS
 
-}} // namespace tracktion { inline namespace engine
+}

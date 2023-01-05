@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 TempoTrack::TempoTrack (Edit& e, const juce::ValueTree& v)
@@ -42,17 +42,17 @@ int TempoTrack::indexOfTrackItem (TrackItem* ti) const
     return buildTrackItemList().indexOf (ti);
 }
 
-int TempoTrack::getIndexOfNextTrackItemAt (TimePosition time)
+int TempoTrack::getIndexOfNextTrackItemAt (double time)
 {
     return findIndexOfNextItemAt (buildTrackItemList(), time);
 }
 
-TrackItem* TempoTrack::getNextTrackItemAt (TimePosition time)
+TrackItem* TempoTrack::getNextTrackItemAt (double time)
 {
     return getTrackItem (getIndexOfNextTrackItemAt (time));
 }
 
-void TempoTrack::insertSpaceIntoTrack (TimePosition time, TimeDuration amountOfSpace)
+void TempoTrack::insertSpaceIntoTrack (double time, double amountOfSpace)
 {
     Track::insertSpaceIntoTrack (time, amountOfSpace);
 
@@ -86,4 +86,4 @@ juce::Array<TrackItem*> TempoTrack::buildTrackItemList() const
     return items;
 }
 
-}} // namespace tracktion { inline namespace engine
+}

@@ -10,7 +10,7 @@
 
 #pragma once
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /** An AudioNode that fades its input node in/out at given times. */
@@ -18,8 +18,8 @@ class FadeInOutAudioNode : public SingleInputAudioNode
 {
 public:
     FadeInOutAudioNode (AudioNode* input,
-                        legacy::EditTimeRange fadeIn,
-                        legacy::EditTimeRange fadeOut,
+                        EditTimeRange fadeIn,
+                        EditTimeRange fadeOut,
                         AudioFadeCurve::Type fadeInType,
                         AudioFadeCurve::Type fadeOutType,
                         bool clearSamplesOutsideFade = true);
@@ -32,19 +32,17 @@ public:
     void renderOver (const AudioRenderContext& rc) override;
     void renderAdding (const AudioRenderContext& rc) override;
 
-    void renderSection (const AudioRenderContext&, legacy::EditTimeRange);
+    void renderSection (const AudioRenderContext&, EditTimeRange editTime);
 
 private:
     //==============================================================================
-    legacy::EditTimeRange fadeIn, fadeOut;
+    EditTimeRange fadeIn, fadeOut;
     AudioFadeCurve::Type fadeInType, fadeOutType;
     bool clearExtraSamples = true;
 
     bool renderingNeeded (const AudioRenderContext&) const;
 
-    static int timeToSample (const AudioRenderContext&, legacy::EditTimeRange, double);
-
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (FadeInOutAudioNode)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

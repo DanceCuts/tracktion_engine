@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -64,7 +64,7 @@ public:
     juce::String getClipMessage() override;
 
     //==============================================================================
-    TimeDuration getSourceLength() const override       { return editSnapshot == nullptr ? 0_td : editSnapshot->getLength(); }
+    double getSourceLength() const override             { return editSnapshot == nullptr ? 0.0 : editSnapshot->getLength(); }
     bool usesSourceFile() override                      { return false; }
     void sourceMediaChanged() override;
     void changed() override;
@@ -106,4 +106,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (EditClip)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

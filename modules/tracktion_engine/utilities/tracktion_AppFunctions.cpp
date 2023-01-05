@@ -8,19 +8,19 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 namespace AppFunctions
 {
-    inline UIBehaviour& getCurrentUIBehaviour()
+    UIBehaviour& getCurrentUIBehaviour()
     {
         auto e = Engine::getEngines()[0];
         jassert (e != nullptr);
         return e->getUIBehaviour();
     }
 
-    inline Edit* getCurrentlyFocusedEdit()
+    Edit* getCurrentlyFocusedEdit()
     {
         if (auto e = getCurrentUIBehaviour().getCurrentlyFocusedEdit())
             return e;
@@ -29,7 +29,7 @@ namespace AppFunctions
         return nullptr;
     }
 
-    inline TransportControl* getActiveTransport()
+    TransportControl* getActiveTransport()
     {
         if (auto ed = getCurrentlyFocusedEdit())
             return &ed->getTransport();
@@ -37,7 +37,7 @@ namespace AppFunctions
         return {};
     }
 
-    inline SelectionManager* getCurrentlyFocusedSelectionManagerWithValidEdit()
+    SelectionManager* getCurrentlyFocusedSelectionManagerWithValidEdit()
     {
         if (auto sm = getCurrentUIBehaviour().getCurrentlyFocusedSelectionManager())
             if (sm->edit != nullptr)
@@ -46,7 +46,7 @@ namespace AppFunctions
         return nullptr;
     }
 
-    inline SelectableList getSelectedItems()
+    SelectableList getSelectedItems()
     {
         SelectableList items;
 
@@ -67,17 +67,17 @@ namespace AppFunctions
         return false;
     }
 
-    inline void nudgeSelected (const juce::String& commandDesc)
+    void nudgeSelected (const juce::String& commandDesc)
     {
         getCurrentUIBehaviour().nudgeSelected (commandDesc);
     }
 
-    inline void zoomHorizontal (float increment)
+    void zoomHorizontal (float increment)
     {
         getCurrentUIBehaviour().zoomHorizontal (increment);
     }
 
-    inline void zoomVertical (float amount)
+    void zoomVertical (float amount)
     {
         getCurrentUIBehaviour().zoomVertical (amount);
     }
@@ -177,15 +177,13 @@ namespace AppFunctions
     void markIn (bool forceAtCursor)
     {
         if (auto transport = getActiveTransport())
-            transport->setLoopIn  (forceAtCursor ? transport->position.get()
-                                                 : getCurrentUIBehaviour().getEditingPosition (transport->edit));
+            transport->setLoopIn  (forceAtCursor ? transport->position : getCurrentUIBehaviour().getEditingPosition (transport->edit));
     }
 
     void markOut (bool forceAtCursor)
     {
         if (auto transport = getActiveTransport())
-            transport->setLoopOut  (forceAtCursor ? transport->position.get()
-                                                  : getCurrentUIBehaviour().getEditingPosition (transport->edit));
+            transport->setLoopOut  (forceAtCursor ? transport->position : getCurrentUIBehaviour().getEditingPosition (transport->edit));
     }
 
     void start()
@@ -361,13 +359,13 @@ namespace AppFunctions
     void goToMarkIn()
     {
         if (auto transport = getActiveTransport())
-            transport->setPosition (transport->getLoopRange().getStart());
+            transport->setCurrentPosition (transport->getLoopRange().getStart());
     }
 
     void goToMarkOut()
     {
         if (auto transport = getActiveTransport())
-            transport->setPosition (transport->getLoopRange().getEnd());
+            transport->setCurrentPosition (transport->getLoopRange().getEnd());
     }
 
     void zoomToSelection()
@@ -397,15 +395,15 @@ namespace AppFunctions
     void moveToNextMarker()
     {
         if (auto transport = getActiveTransport())
-            if (auto clip = transport->edit.getMarkerManager().getNextMarker (transport->getPosition()))
-                transport->setPosition (clip->getPosition().getStart());
+            if (auto clip = transport->edit.getMarkerManager().getNextMarker (transport->getCurrentPosition()))
+                transport->setCurrentPosition (clip->getPosition().getStart());
     }
 
     void moveToPrevMarker()
     {
         if (auto transport = getActiveTransport())
-            if (auto clip = transport->edit.getMarkerManager().getPrevMarker (transport->getPosition()))
-                transport->setPosition (clip->getPosition().getStart());
+            if (auto clip = transport->edit.getMarkerManager().getPrevMarker (transport->getCurrentPosition()))
+                transport->setCurrentPosition (clip->getPosition().getStart());
     }
 
     void redo()
@@ -513,9 +511,9 @@ namespace AppFunctions
 
             if (auto ct = edit.getChordTrack())
             {
-                const auto start = edit.getTransport().getPosition();
+                auto start = edit.getTransport().position.get();
                 auto& tempo = edit.tempoSequence.getTempoAt (start);
-                auto approxOneBarLength = TimeDuration::fromSeconds (tempo.getMatchingTimeSig().numerator * tempo.getApproxBeatLength().inSeconds());
+                auto approxOneBarLength = tempo.getMatchingTimeSig().numerator * tempo.getApproxBeatLength();
 
                 ct->insertNewClip (TrackItem::Type::chord, { start, start + approxOneBarLength }, sm);
             }
@@ -650,4 +648,4 @@ namespace AppFunctions
     }
 }
 
-}} // namespace tracktion { inline namespace engine
+}

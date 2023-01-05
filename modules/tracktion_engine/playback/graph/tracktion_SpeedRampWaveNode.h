@@ -8,29 +8,22 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-#pragma once
-
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
 /** Describes the time and type of the speed fade in/outs.*/
 struct SpeedFadeDescription
 {
-    TimeRange inTimeRange, outTimeRange;
+    EditTimeRange inTimeRange, outTimeRange;
     AudioFadeCurve::Type fadeInType, fadeOutType;
-
-    bool isEmpty() const
-    {
-        return inTimeRange.isEmpty() && outTimeRange.isEmpty();
-    }
 };
 
 
 //==============================================================================
 //==============================================================================
 /** An Node that plays back a wave file. */
-class SpeedRampWaveNode final   : public tracktion::graph::Node,
+class SpeedRampWaveNode final   : public tracktion_graph::Node,
                                   public TracktionEngineNode
 {
 public:
@@ -43,9 +36,9 @@ public:
 
     */
     SpeedRampWaveNode (const AudioFile&,
-                       TimeRange editTime,
-                       TimeDuration offset,
-                       TimeRange loopSection,
+                       EditTimeRange editTime,
+                       double offset,
+                       EditTimeRange loopSection,
                        LiveClipLevel,
                        double speedRatio,
                        const juce::AudioChannelSet& sourceChannelsToUse,
@@ -56,15 +49,15 @@ public:
                        SpeedFadeDescription);
 
     //==============================================================================
-    tracktion::graph::NodeProperties getNodeProperties() override;
-    void prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo&) override;
+    tracktion_graph::NodeProperties getNodeProperties() override;
+    void prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo&) override;
     bool isReadyToProcess() override;
     void process (ProcessContext&) override;
 
 private:
     //==============================================================================
-    TimeRange editPosition, loopSection;
-    TimeDuration offset;
+    EditTimeRange editPosition, loopSection;
+    double offset = 0;
     double originalSpeedRatio = 0, outputSampleRate = 44100.0;
     const EditItemID editItemID;
     bool isOfflineRender = false;
@@ -82,7 +75,7 @@ private:
     bool playedLastBlock = false;
 
     //==============================================================================
-    int64_t editTimeToFileSample (TimePosition) const noexcept;
+    int64_t editTimeToFileSample (double) const noexcept;
     bool updateFileSampleRate();
     void processSection (ProcessContext&, juce::Range<int64_t> timelineRange);
 
@@ -90,21 +83,4 @@ private:
     static double rescale (AudioFadeCurve::Type, double proportion, bool rampUp);
 };
 
-}} // namespace tracktion { inline namespace engine
-
-#ifndef DOXYGEN
-template<>
-struct std::hash<tracktion::engine::SpeedFadeDescription>
-{
-    size_t operator() (const tracktion::engine::SpeedFadeDescription& d) const noexcept
-    {
-        size_t seed = 0;
-        tracktion::hash_combine (seed, d.inTimeRange);
-        tracktion::hash_combine (seed, d.outTimeRange);
-        tracktion::hash_combine (seed, static_cast<int> (d.fadeInType));
-        tracktion::hash_combine (seed, static_cast<int> (d.fadeOutType));
-
-        return seed;
-    }
-};
-#endif
+} // namespace tracktion_engine

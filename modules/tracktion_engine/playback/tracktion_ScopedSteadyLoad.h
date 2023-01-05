@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 class ScopedSteadyLoad
@@ -133,4 +133,4 @@ private:
     static constexpr double loadGenerationEndEarlyDurationSec = 10000e-9;
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

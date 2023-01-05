@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -29,20 +29,20 @@ class ClickGenerator
 public:
     //==============================================================================
     /** Creates a click generator for an Edit. */
-    ClickGenerator (Edit&, bool isMidi, TimePosition endTime);
+    ClickGenerator (Edit&, bool isMidi, double endTime);
 
     /** Prepares a ClickGenerator to be played.
         Must be called before processBlock
     */
-    void prepareToPlay (double sampleRate, TimePosition startTime);
+    void prepareToPlay (double sampleRate, double startTime);
 
     /** Adds clicks to a block of audio and MIDI for a given time range. */
-    void processBlock (choc::buffer::ChannelArrayView<float>*, MidiMessageArray*, TimeRange);
+    void processBlock (choc::buffer::ChannelArrayView<float>*, MidiMessageArray*, EditTimeRange);
 
 private:
     const Edit& edit;
     bool midi = false;
-    juce::Array<TimePosition> beatTimes;
+    juce::Array<double> beatTimes;
     juce::BigInteger loudBeats;
     int currentBeat = 0;
 
@@ -51,7 +51,7 @@ private:
     int bigClickMidiNote = 37, littleClickMidiNote = 76;
 
     //==============================================================================
-    bool isMutedAtTime (TimePosition) const;
+    bool isMutedAtTime (double time) const;
 };
 
 
@@ -59,25 +59,25 @@ private:
 /**
     Adds audio and MIDI clicks to the input buffers.
 */
-class ClickNode final   : public tracktion::graph::Node
+class ClickNode final   : public tracktion_graph::Node
 {
 public:
-    ClickNode (Edit&, int numAudioChannels, bool generateMidi, tracktion::graph::PlayHead&);
+    ClickNode (Edit&, int numAudioChannels, bool generateMidi, tracktion_graph::PlayHead&);
 
     std::vector<Node*> getDirectInputNodes() override;
-    tracktion::graph::NodeProperties getNodeProperties() override;
-    void prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo&) override;
+    tracktion_graph::NodeProperties getNodeProperties() override;
+    void prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo&) override;
     bool isReadyToProcess() override;
     void process (ProcessContext&) override;
 
 private:
     //==============================================================================
     Edit& edit;
-    tracktion::graph::PlayHead& playHead;
+    tracktion_graph::PlayHead& playHead;
     ClickGenerator clickGenerator;
     const int numChannels;
     const bool generateMidi;
     double sampleRate = 44100.0;
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

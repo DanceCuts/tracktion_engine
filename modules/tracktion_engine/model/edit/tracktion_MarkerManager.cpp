@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 MarkerManager::MarkerManager (Edit& e, const juce::ValueTree& v)
@@ -72,45 +72,45 @@ MarkerClip* MarkerManager::getMarkerByID (int id)
     return {};
 }
 
-MarkerClip* MarkerManager::getNextMarker (TimePosition nowTime)
+MarkerClip* MarkerManager::getNextMarker (double nowTime)
 {
     MarkerClip* next = nullptr;
 
     for (auto m : getMarkers())
     {
-        auto diff     = m->getPosition().getStart() - nowTime;
-        auto nextDiff = next ? next->getPosition().getStart() - nowTime : TimeDuration();
+        double diff     = m->getPosition().getStart() - nowTime;
+        double nextDiff = next ? next->getPosition().getStart() - nowTime : 0.0;
 
-        if (diff > TimeDuration::fromSeconds (0.001) && ((next == nullptr) || (diff < nextDiff)))
+        if (diff > 0.001 && ((next == nullptr) || (diff < nextDiff)))
             next = m;
     }
 
     return next;
 }
 
-MarkerClip* MarkerManager::getPrevMarker (TimePosition nowTime)
+MarkerClip* MarkerManager::getPrevMarker (double nowTime)
 {
     MarkerClip* prev = nullptr;
 
     for (auto m : getMarkers())
     {
-        auto diff     = m->getPosition().getStart() - nowTime;
-        auto prevDiff = prev ? prev->getPosition().getStart() - nowTime : TimeDuration();
+        double diff     = m->getPosition().getStart() - nowTime;
+        double prevDiff = prev ? prev->getPosition().getStart() - nowTime : 0.0;
 
-        if (diff < TimeDuration::fromSeconds (-0.001) && ((prev == nullptr) || (diff > prevDiff)))
+        if (diff < -0.001 && ((prev == nullptr) || (diff > prevDiff)))
             prev = m;
     }
 
     return prev;
 }
 
-MarkerClip::Ptr MarkerManager::createMarker (int number, TimePosition pos, TimeDuration length,
+MarkerClip::Ptr MarkerManager::createMarker (int number, double pos, double length,
                                              Clip::SyncType type, SelectionManager* sm)
 {
-    if (length == TimeDuration())
+    if (length == 0.0)
     {
         auto& tempo = edit.tempoSequence.getTempoAt (pos);
-        length = TimeDuration::fromSeconds (tempo.getMatchingTimeSig().numerator.get() * tempo.getApproxBeatLength().inSeconds());
+        length = tempo.getMatchingTimeSig().numerator * tempo.getApproxBeatLength();
     }
 
     if (auto track = edit.getMarkerTrack())
@@ -121,7 +121,7 @@ MarkerClip::Ptr MarkerManager::createMarker (int number, TimePosition pos, TimeD
             clip->setSyncType (type);
             clip->setStart (pos, true, true);
 
-            if (length > TimeDuration())
+            if (length > 0.0)
                 clip->setLength (length, true);
 
             if (number >= 0)
@@ -145,7 +145,7 @@ Clip::SyncType MarkerManager::getNewMarkerMode() const
     return Clip::syncAbsolute;
 }
 
-MarkerClip::Ptr MarkerManager::createMarker (int number, TimePosition pos, TimeDuration length, SelectionManager* sm)
+MarkerClip::Ptr MarkerManager::createMarker (int number, double pos, double length, SelectionManager* sm)
 {
     return createMarker (number, pos, length, getNewMarkerMode(), sm);
 }
@@ -161,4 +161,4 @@ void MarkerManager::valueTreeChildAdded (juce::ValueTree& p, juce::ValueTree&)  
 void MarkerManager::valueTreeChildRemoved (juce::ValueTree& p, juce::ValueTree&, int)       { valueTreeChanged (p); }
 void MarkerManager::valueTreeParentChanged (juce::ValueTree& v)                             { valueTreeChanged (v); }
 
-}} // namespace tracktion { inline namespace engine
+}

@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -32,10 +32,10 @@ Clip::Clip (const juce::ValueTree& v, ClipTrack& targetTrack, EditItemID id, Typ
     groupID.referTo (state, IDs::groupID, um);
     linkID.referTo (state, IDs::linkID, um);
 
-    if (! (length >= TimeDuration() && length < TimeDuration::fromSeconds (1.0e10))) // reverse logic to check for NANs
+    if (! (length >= 0 && length < 1.0e10)) // reverse logic to check for NANs
     {
         jassertfalse;
-        length = TimeDuration();
+        length = 0;
     }
 
     state.addListener (this);
@@ -256,84 +256,87 @@ void Clip::sourceMediaChanged()
 //==============================================================================
 void Clip::setPosition (ClipPosition newPosition)
 {
-    const auto maxEnd = Edit::getMaximumEditEnd();
-    newPosition.time = { juce::jlimit (TimePosition(), maxEnd, newPosition.time.getStart()),
-                         juce::jlimit (newPosition.time.getStart(), maxEnd, newPosition.time.getEnd()) };
-    newPosition.offset = juce::jmax (TimeDuration(), newPosition.offset);
+    newPosition.time.start = juce::jlimit (0.0, Edit::maximumLength, newPosition.time.start);
+    newPosition.time.end   = juce::jlimit (newPosition.time.start, Edit::maximumLength, newPosition.time.end);
+    newPosition.offset = juce::jmax (0.0, newPosition.offset);
 
-    clipStart = newPosition.time.getStart();
+    clipStart = newPosition.time.start;
     length = newPosition.time.getLength();
     offset = newPosition.offset;
 }
 
-void Clip::setStart (TimePosition newStart, bool preserveSync, bool keepLength)
+void Clip::setStart (double newStart, bool preserveSync, bool keepLength)
 {
     auto pos = getPosition();
-    auto delta = juce::jlimit (0_tp, Edit::getMaximumEditEnd(), newStart) - pos.time.getStart();
+    auto delta = juce::jlimit (0.0, Edit::maximumLength, newStart) - pos.time.start;
+
+    pos.time.start += delta;
 
     if (keepLength)
-        pos.time = pos.time + delta;
-    else
-        pos.time = pos.time.withStart (pos.time.getStart() + delta);
+        pos.time.end += delta;
 
     if (preserveSync)
-        pos.offset = juce::jmax (0_td, pos.offset + delta);
+        pos.offset = juce::jmax (0.0, pos.offset + delta);
 
     setPosition (pos);
 }
 
-void Clip::setLength (TimeDuration newLength, bool preserveSync)
+void Clip::setLength (double newLength, bool preserveSync)
 {
-    setEnd (getPosition().time.getStart() + newLength, preserveSync);
+    setEnd (getPosition().time.start + newLength, preserveSync);
 }
 
-void Clip::setEnd (TimePosition newEnd, bool preserveSync)
+void Clip::setEnd (double newEnd, bool preserveSync)
 {
     auto pos = getPosition();
-    auto delta = juce::jlimit (pos.time.getStart(), Edit::getMaximumEditEnd(), newEnd) - pos.time.getEnd();
+    auto delta = juce::jlimit (pos.time.start, Edit::maximumLength, newEnd) - pos.time.end;
 
     if (! preserveSync)
-        pos.offset = pos.offset - delta;
+        pos.offset -= delta;
 
-    pos.time = pos.time.withEnd (pos.time.getEnd() + delta);
+    pos.time.end += delta;
     setPosition (pos);
 }
 
-void Clip::setOffset (TimeDuration newOffset)
+void Clip::setOffset (double newOffset)
 {
     auto pos = getPosition();
-    pos.offset = juce::jmax (TimeDuration(), newOffset);
+    pos.offset = juce::jmax (0.0, newOffset);
     setPosition (pos);
 }
 
-juce::Array<TimePosition> Clip::getInterestingTimes()
+juce::Array<double> Clip::getInterestingTimes()
 {
-    juce::Array<TimePosition> times;
+    juce::Array<double> times;
 
     auto pos = getPosition();
-    times.add (pos.time.getStart());
+    times.add (pos.time.start);
 
-    for (auto m : getRescaledMarkPoints())
-        times.add (m + toDuration (pos.time.getStart()));
+    for (double m : getRescaledMarkPoints())
+        times.add (m + pos.time.start);
 
-    times.add (pos.time.getEnd());
+    times.add (pos.time.end);
 
     return times;
 }
 
-juce::Array<TimePosition> Clip::getRescaledMarkPoints() const
+juce::Array<double> Clip::getRescaledMarkPoints() const
 {
-    juce::Array<TimePosition> times;
-    const auto offsetSecs = getPosition().offset.inSeconds();
+    juce::Array<double> times;
+    auto pos = getPosition();
 
     if (auto sourceItem = sourceFileReference.getSourceProjectItem())
-        for (auto t : sourceItem->getMarkedPoints())
-            times.add (TimePosition::fromSeconds (t.inSeconds() / speedRatio - offsetSecs));
+    {
+        times = sourceItem->getMarkedPoints();
+
+        for (double& t : times)
+            t /= speedRatio - pos.offset;
+    }
 
     return times;
 }
 
-TimePosition Clip::getSpottingPoint() const
+double Clip::getSpottingPoint() const
 {
     auto marks = getRescaledMarkPoints();
 
@@ -342,20 +345,20 @@ TimePosition Clip::getSpottingPoint() const
 
     auto pos = getPosition();
 
-    return juce::jlimit (TimePosition(), toPosition (pos.time.getLength()),
+    return juce::jlimit (0.0, pos.time.getLength(),
                          marks.getFirst() - pos.offset);
 }
 
-void Clip::trimAwayOverlap (TimeRange r)
+void Clip::trimAwayOverlap (EditTimeRange r)
 {
     auto pos = getPosition();
 
-    if (r.getEnd() > pos.time.getStart())
+    if (r.end > pos.time.start)
     {
-        if (r.getEnd() < pos.time.getEnd())
-            setStart (r.getEnd(), true, false);
-        else if (pos.time.getStart() < r.getStart())
-            setEnd (r.getStart(), true);
+        if (r.end < pos.time.end)
+            setStart (r.end, true, false);
+        else if (pos.time.start < r.start)
+            setEnd (r.start, true);
     }
 }
 
@@ -396,13 +399,13 @@ void Clip::setSpeedRatio (double r)
         speedRatio = r;
 }
 
-void Clip::rescale (TimePosition pivotTimeInEdit, double factor)
+void Clip::rescale (double pivotTimeInEdit, double factor)
 {
     auto pos = getPosition();
 
     // limit the start to 0
-    if (pivotTimeInEdit + ((pos.getStart() - pivotTimeInEdit) * factor) < TimePosition())
-        factor = -(toDuration (pivotTimeInEdit) / (pos.getStart() - pivotTimeInEdit));
+    if (pivotTimeInEdit + (factor * (pos.getStart() - pivotTimeInEdit)) < 0)
+        factor = -pivotTimeInEdit / (pos.getStart() - pivotTimeInEdit);
 
     if (factor > 0.01 && factor != 1.0)
     {
@@ -531,14 +534,14 @@ ClipPosition Clip::getPosition() const
     return { { s, s + length.get() }, offset.get() };
 }
 
-BeatPosition Clip::getContentBeatAtTime (TimePosition t) const
+double Clip::getContentBeatAtTime (double t) const
 {
-    return edit.tempoSequence.toBeats (t) - toDuration (getContentStartBeat());
+    return edit.tempoSequence.timeToBeats (t) - getContentStartBeat();
 }
 
-TimePosition Clip::getTimeOfContentBeat (BeatPosition beat) const
+double Clip::getTimeOfContentBeat (double beat) const
 {
-    return edit.tempoSequence.toTime (beat + toDuration (getContentStartBeat()));
+    return edit.tempoSequence.beatsToTime (beat + getContentStartBeat());
 }
 
 TrackItem* Clip::getGroupParent() const
@@ -575,4 +578,4 @@ void Clip::removeListener (Listener* l)
         edit.restartPlayback();
 }
 
-}} // namespace tracktion { inline namespace engine
+}

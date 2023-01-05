@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -16,8 +16,8 @@ namespace tracktion { inline namespace engine
 */
 struct ClipLevel
 {
-    juce::CachedValue<AtomicWrapper<float>> dbGain, pan;
-    juce::CachedValue<AtomicWrapper<bool>> mute;
+    juce::CachedValue<float> dbGain, pan;
+    juce::CachedValue<bool> mute;
 };
 
 //==============================================================================
@@ -34,10 +34,10 @@ struct LiveClipLevel
         : levels (std::move (l)) {}
 
     /** Returns the clip's absolute gain. */
-    float getGain() const noexcept              { return levels ? dbToGain (levels->dbGain.get()) : 1.0f; }
+    float getGain() const noexcept              { return levels ? dbToGain (levels->dbGain) : 1.0f; }
 
     /** Returns the clip's pan from -1.0 to 1.0. */
-    float getPan() const noexcept               { return levels ? static_cast<float> (levels->pan.get()) : 0.0f; }
+    float getPan() const noexcept               { return levels ? levels->pan.get() : 0.0f; }
 
     /** Returns true if the clip is muted. */
     bool isMute() const noexcept                { return levels && levels->mute.get(); }
@@ -145,20 +145,20 @@ public:
     ClipPosition getPosition() const override;
 
     /** Returns the beat number (with offset) at the given time */
-    BeatPosition getContentBeatAtTime (TimePosition time) const;
+    double getContentBeatAtTime (double time) const;
     /** Returns time of a beat number */
-    TimePosition getTimeOfContentBeat (BeatPosition beat) const;
+    double getTimeOfContentBeat (double beat) const;
 
     /** Returns the maximum lenght this clip can have. */
-    virtual TimeDuration getMaximumLength()               { return toDuration (Edit::getMaximumEditEnd()); }
+    virtual double getMaximumLength()               { return Edit::maximumLength; }
 
     /** Returns times for snapping to, relative to the Edit. Base class adds start and end time. */
-    virtual juce::Array<TimePosition> getInterestingTimes();
+    virtual juce::Array<double> getInterestingTimes();
 
     /** Returns the first marked time in the source file which can be used for
         syncronising newly added clips.
     */
-    TimePosition getSpottingPoint() const;
+    double getSpottingPoint() const;
 
     //==============================================================================
     /** Returns true if this clip is capable of looping. */
@@ -173,23 +173,18 @@ public:
     virtual void disableLooping()                   {}
 
     /** Returns the beat position of the loop start point. */
-    virtual BeatPosition getLoopStartBeats() const          { return BeatPosition(); }
+    virtual double getLoopStartBeats() const        { return 0.0; }
     /** Returns the start time of the loop start point. */
-    virtual TimePosition getLoopStart() const               { return TimePosition(); }
+    virtual double getLoopStart() const             { return 0.0; }
     /** Returns the length of loop in beats. */
-    virtual BeatDuration getLoopLengthBeats() const         { return BeatDuration(); }
+    virtual double getLoopLengthBeats() const       { return 0.0; }
     /** Returns the length of loop in seconds. */
-    virtual TimeDuration getLoopLength() const              { return TimeDuration(); }
-
-    /** Returns the loop range in seconds. */
-    TimeRange getLoopRange() const                          { return { getLoopStart(), getLoopLength() }; }
-    /** Returns the loop range in beats. */
-    BeatRange getLoopRangeBeats() const                     { return { getLoopStartBeats(), getLoopLengthBeats() }; }
+    virtual double getLoopLength() const            { return 0.0; }
 
     /** Sets the loop range the clip should use in seconds. */
-    virtual void setLoopRange (TimeRange)                   {}
+    virtual void setLoopRange (EditTimeRange newLoopRange)            { juce::ignoreUnused (newLoopRange); }
     /** Sets the loop range the clip should use in beats. */
-    virtual void setLoopRangeBeats (BeatRange)              {}
+    virtual void setLoopRangeBeats (juce::Range<double> newBeatRange) { juce::ignoreUnused (newBeatRange); }
 
     /** Returns true if the clip is muted. */
     virtual bool isMuted() const = 0;
@@ -217,27 +212,27 @@ public:
         @param preserveSync Whether the source material position should be kept static in relation to the Edit's timeline.
         @param keepLength   Whether the end should be moved to keep the same length.
     */
-    void setStart (TimePosition newStart, bool preserveSync, bool keepLength);
+    void setStart (double newStart, bool preserveSync, bool keepLength);
 
     /** Sets the length of the clip.
         @param newLength    The length in seconds
         @param preserveSync Whether the source material position should be kept static in relation to the Edit's timeline.
     */
-    void setLength (TimeDuration newLength, bool preserveSync);
+    void setLength (double newLength, bool preserveSync);
 
     /** Sets the end of the clip.
         @param newEnd       The end time in seconds
         @param preserveSync Whether the source material position should be kept static in relation to the Edit's timeline.
     */
-    void setEnd (TimePosition newEnd, bool preserveSync);
+    void setEnd (double newEnd, bool preserveSync);
 
     /** Sets the offset of the clip, i.e. how much the clip's content should be shifted within the clip boundary.
         @param newOffset    The offset in seconds
     */
-    void setOffset (TimeDuration newOffset);
+    void setOffset (double newOffset);
 
     /** Trims away any part of the clip that overlaps this region. */
-    void trimAwayOverlap (TimeRange editRangeToTrim);
+    void trimAwayOverlap (EditTimeRange editRangeToTrim);
 
     /** Removes this clip from the parent track. */
     void removeFromParentTrack();
@@ -258,7 +253,7 @@ public:
         @param pivotTimeInEdit  The time to keep fixed
         @param factor           The scale factor
     */
-    virtual void rescale (TimePosition pivotTimeInEdit, double factor);
+    virtual void rescale (double pivotTimeInEdit, double factor);
 
     //==============================================================================
     /** Returns true if the clip is part of a group. */
@@ -398,9 +393,7 @@ protected:
     bool cloneInProgress = false;
     juce::CachedValue<juce::String> clipName;
     ClipTrack* track = nullptr;
-    juce::CachedValue<TimePosition> clipStart;
-    juce::CachedValue<TimeDuration> length, offset;
-    juce::CachedValue<double> speedRatio;
+    juce::CachedValue<double> clipStart, length, offset, speedRatio;
     SourceFileReference sourceFileReference;
     juce::CachedValue<EditItemID> groupID;
     juce::CachedValue<juce::String> linkID;
@@ -419,7 +412,7 @@ protected:
     virtual void setTrack (ClipTrack*);
 
     /** Returns the mark points relative to the start of the clip, rescaled to the current speed. */
-    virtual juce::Array<TimePosition> getRescaledMarkPoints() const;
+    virtual juce::Array<double> getRescaledMarkPoints() const;
 
     /** @internal */
     void valueTreePropertyChanged (juce::ValueTree&, const juce::Identifier&) override;
@@ -447,14 +440,14 @@ namespace ClipConstants
     const double speedRatioMax = 20.0;  /**< Maximum speed ratio. */
 }
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine
 
 namespace juce
 {
     template <>
-    struct VariantConverter<tracktion::engine::Clip::SyncType>
+    struct VariantConverter<tracktion_engine::Clip::SyncType>
     {
-        static tracktion::engine::Clip::SyncType fromVar (const var& v)   { return (tracktion::engine::Clip::SyncType) static_cast<int> (v); }
-        static var toVar (tracktion::engine::Clip::SyncType v)            { return static_cast<int> (v); }
+        static tracktion_engine::Clip::SyncType fromVar (const var& v)   { return (tracktion_engine::Clip::SyncType) static_cast<int> (v); }
+        static var toVar (tracktion_engine::Clip::SyncType v)            { return static_cast<int> (v); }
     };
 }

@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /** Manages a list of items that are currently selected.
@@ -187,4 +187,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SelectionManager)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

@@ -46,9 +46,6 @@ struct CodePrinter
     /// Clears and resets the state of the printer.
     void reset();
 
-    /// Returns true if nothing has been printed.
-    bool empty() const;
-
     //==============================================================================
     CodePrinter& operator<< (const char*);
     CodePrinter& operator<< (const std::string&);
@@ -115,9 +112,6 @@ struct CodePrinter
     /// Modifies the current total indent level. @see createIndent()
     void setTotalIndent (size_t newTotalNumSpaces);
 
-    /// Gets rid of any trailing blanks
-    void trimTrailingBlankLines();
-
 private:
     struct Line
     {
@@ -151,8 +145,7 @@ private:
 //
 //==============================================================================
 
-inline void CodePrinter::reset()            { *this = {}; }
-inline bool CodePrinter::empty() const      { return lines.empty(); }
+inline void CodePrinter::reset()    { *this = {}; }
 
 inline CodePrinter& CodePrinter::operator<< (const char* s)            { writeBlock (s); return *this; }
 inline CodePrinter& CodePrinter::operator<< (const std::string& s)     { writeBlock (s); return *this; }
@@ -212,10 +205,7 @@ struct CodePrinter::Indent
         owner.addIndent (-amount);
 
         if (closeBrace != 0)
-        {
-            owner.trimTrailingBlankLines();
             owner << closeBrace;
-        }
     }
 
 private:
@@ -331,13 +321,6 @@ inline void CodePrinter::writeBlock (std::string_view text)
 
     append ({ lineStart, end });
 }
-
-inline void CodePrinter::trimTrailingBlankLines()
-{
-    while (isLastLineEmpty())
-        lines.pop_back();
-}
-
 
 } // namespace choc::text
 

@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 ProjectItemID::ProjectItemID (const juce::String& asString) noexcept
@@ -79,4 +79,4 @@ ProjectItemID ProjectItemID::withNewProjectID (int newProjectID) const
     return { getItemID(), newProjectID };
 }
 
-}} // namespace tracktion { inline namespace engine
+}

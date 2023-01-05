@@ -10,7 +10,7 @@
 
 #pragma once
 
-#include <tracktion_core/utilities/tracktion_Benchmark.h>
+#include <tracktion_engine/utilities/tracktion_Benchmark.h>
 
 using namespace tracktion_engine;
 
@@ -90,7 +90,7 @@ struct CoutLogger : public Logger
 namespace JUnit
 {
     /** Creates a JUnit formatted ValueTree from a UnitTestRunner's results. */
-    inline ValueTree createJUnitResultValueTree (const UnitTestRunner::TestResult& result)
+    ValueTree createJUnitResultValueTree (const UnitTestRunner::TestResult& result)
     {
         ValueTree testcase ("testcase");
         testcase.setProperty ("classname", result.unitTestName, nullptr);
@@ -104,7 +104,7 @@ namespace JUnit
     }
 
     /** Creates a JUnit formatted 'testsuite' ValueTree from a UnitTestRunner's results. */
-    inline ValueTree createJUnitValueTree (const String& testSuiteName, const UnitTestRunner& runner, RelativeTime duration)
+    ValueTree createJUnitValueTree (const String& testSuiteName, const UnitTestRunner& runner, RelativeTime duration)
     {
         ValueTree suite ("testsuite");
         suite.setProperty ("name", testSuiteName, nullptr);
@@ -131,13 +131,13 @@ namespace JUnit
     }
 
     /** Creates a JUnit formatted 'testsuite' XmlElement from a UnitTestRunner's results. */
-    inline std::unique_ptr<XmlElement> createJUnitXML (const String& testSuiteName, const UnitTestRunner& runner, RelativeTime duration)
+    std::unique_ptr<XmlElement> createJUnitXML (const String& testSuiteName, const UnitTestRunner& runner, RelativeTime duration)
     {
         return createJUnitValueTree (testSuiteName, runner, duration).createXml();
     }
 
     /** Converts a UnitTestRunner's results to a JUnit formatted XML file. */
-    inline Result createJUnitXMLFile (const File& destinationFile, const String& testSuiteName, const UnitTestRunner& runner, RelativeTime duration)
+    Result createJUnitXMLFile (const File& destinationFile, const String& testSuiteName, const UnitTestRunner& runner, RelativeTime duration)
     {
         if (auto xml = createJUnitXML (testSuiteName, runner, duration))
             if (! xml->writeTo (destinationFile))
@@ -152,7 +152,7 @@ namespace JUnit
 //==============================================================================
 namespace TestRunner
 {
-    inline int runUnitTests (const File& junitResultsFile, Array<UnitTest*> tests)
+    int runTests (const File& junitResultsFile, std::vector<juce::String> categories)
     {
         CoutLogger logger;
         Logger::setCurrentLogger (&logger);
@@ -161,6 +161,11 @@ namespace TestRunner
 
         UnitTestRunner testRunner;
         testRunner.setAssertOnFailure (false);
+
+        Array<UnitTest*> tests;
+
+        for (auto& category : categories)
+            tests.addArray (UnitTest::getTestsInCategory (category));
 
         const auto startTime = Time::getCurrentTime();
         testRunner.runTests (tests);
@@ -188,30 +193,9 @@ namespace TestRunner
         return numFailues > 0 ? 1 : 0;
     }
 
-    inline int runTests (const File& junitResultsFile, std::vector<juce::String> categories)
-    {
-        Array<UnitTest*> tests;
-
-        for (auto& category : categories)
-            tests.addArray (UnitTest::getTestsInCategory (category));
-
-        return runUnitTests (junitResultsFile, std::move (tests));
-    }
-
-    inline int runTests (const File& junitResultsFile, juce::String category)
+    int runTests (const File& junitResultsFile, juce::String category)
     {
         return runTests (junitResultsFile, std::vector<juce::String> { category });
-    }
-
-    inline int runSingleTest (const File& junitResultsFile, juce::String name)
-    {
-        Array<UnitTest*> tests;
-
-        for (auto test : UnitTest::getAllTests())
-            if (test->getName() == name)
-                tests.add (test);
-
-        return runUnitTests (junitResultsFile, std::move (tests));
     }
 }
 

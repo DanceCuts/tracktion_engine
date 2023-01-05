@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 juce::AudioFormatReader* AudioFileUtils::createReaderFor (Engine& engine, const juce::File& file)
@@ -213,7 +213,7 @@ SampleCount AudioFileUtils::copySectionToNewFile (Engine& e, const juce::File& s
 SampleCount AudioFileUtils::copySectionToNewFile (Engine& e,
                                                   const juce::File& sourceFile,
                                                   const juce::File& destFile,
-                                                  TimeRange range)
+                                                  EditTimeRange range)
 {
     if (range.isEmpty())
         return -1;
@@ -222,8 +222,8 @@ SampleCount AudioFileUtils::copySectionToNewFile (Engine& e,
 
     if (reader != nullptr)
         return copySection (e, reader, sourceFile, destFile,
-                            { (SampleCount) tracktion::toSamples (range.getStart(),   reader->sampleRate),
-                              (SampleCount) tracktion::toSamples (range.getEnd(),     reader->sampleRate) });
+                            { (SampleCount) (range.getStart() * reader->sampleRate),
+                              (SampleCount) (range.getEnd()   * reader->sampleRate) });
 
     return -1;
 }
@@ -425,4 +425,4 @@ void AudioFileUtils::applyBWAVStartTime (const juce::File& file, SampleCount tim
     }
 }
 
-}} // namespace tracktion { inline namespace engine
+}

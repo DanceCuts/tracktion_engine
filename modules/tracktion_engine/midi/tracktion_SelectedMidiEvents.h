@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 /** Represents a set of selected MIDI notes.
@@ -51,14 +51,14 @@ public:
     const juce::Array<MidiControllerEvent*>& getSelectedControllers() const noexcept    { return selectedControllers; }
 
     //==============================================================================
-    void moveEvents (TimeDuration deltaStart, TimeDuration deltaLength, int deltaNote);
-    void setNoteLengths (BeatDuration newLength);
+    void moveEvents (double deltaStart, double deltaLength, int deltaNote);
+    void setNoteLengths (double newLength);
     void setVelocities (int newVelocity);
     void changeColour (uint8_t newColour);
 
     void nudge (TimecodeSnapType, int leftRight, int upDown);
 
-    TimeRange getSelectedRange() const;
+    EditTimeRange getSelectedRange() const;
 
     //==============================================================================
     juce::String getSelectableDescription() override;
@@ -72,7 +72,7 @@ public:
         a copy at the original location
      */
     static void moveControllerData (const juce::Array<MidiClip*>& clips, const juce::Array<MidiControllerEvent*>* onlyTheseEvents,
-                                    BeatDuration deltaBeats, TimePosition startTime, TimePosition endTime, bool makeCopy);
+                                    double deltaBeats, double startTime, double endTime, bool makeCopy);
 
     /** Host should set this callback to specify if it wants MIDI CC locked to MIDI notes when
         nudging
@@ -95,4 +95,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (SelectedMidiEvents)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

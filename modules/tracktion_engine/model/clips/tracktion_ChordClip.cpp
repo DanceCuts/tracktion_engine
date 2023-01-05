@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 ChordClip::ChordClip (const juce::ValueTree& v, EditItemID id, ClipTrack& targetTrack)
@@ -132,4 +132,4 @@ void ChordClip::handleAsyncUpdate()
     edit.sendTempoOrPitchSequenceChangedUpdates();
 }
 
-}} // namespace tracktion { inline namespace engine
+}

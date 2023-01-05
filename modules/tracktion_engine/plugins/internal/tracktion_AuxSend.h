@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 class AuxSendPlugin   : public Plugin
@@ -55,7 +55,6 @@ public:
 
     juce::CachedValue<int> busNumber;
     juce::CachedValue<float> gainLevel;
-    juce::CachedValue<bool> invertPhase;
 
     AutomatableParameter::Ptr gain;
 
@@ -70,4 +69,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AuxSendPlugin)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

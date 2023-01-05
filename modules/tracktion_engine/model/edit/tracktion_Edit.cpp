@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 Edit::GlobalMacros::GlobalMacros (Edit& e)
@@ -24,13 +24,7 @@ struct Edit::UndoTransactionTimer   : private juce::Timer,
     UndoTransactionTimer (Edit& e)
         : edit (e)
     {
-        // Add the change listener asyncronously to avoid messages coming in
-        // from the Edit initialisation phase
-        juce::MessageManager::callAsync ([ref = juce::WeakReference<UndoTransactionTimer> (this)]
-                                         {
-                                             if (ref != nullptr)
-                                                 ref->edit.getUndoManager().addChangeListener (ref.get());
-                                         });
+        callBlocking ([&] { edit.getUndoManager().addChangeListener (this); });
     }
 
     ~UndoTransactionTimer() override
@@ -52,13 +46,16 @@ struct Edit::UndoTransactionTimer   : private juce::Timer,
 
     void changeListenerCallback (juce::ChangeBroadcaster*) override
     {
-        edit.markAsChanged();
-        startTimer (350);
+        if (juce::Time::getCurrentTime() > timeToStartTransactions)
+        {
+            edit.markAsChanged();
+            startTimer (350);
+        }
     }
 
     Edit& edit;
+    const juce::Time timeToStartTransactions { juce::Time::getCurrentTime() + juce::RelativeTime::seconds (5.0) };
 
-    JUCE_DECLARE_WEAK_REFERENCEABLE (UndoTransactionTimer)
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (UndoTransactionTimer)
 };
 
@@ -161,8 +158,7 @@ struct Edit::TreeWatcher   : public juce::ValueTree::Listener
                          || i == IDs::autoPitch || i == IDs::autoTempo
                          || i == IDs::channels || i == IDs::isReversed
                          || i == IDs::currentTake || i == IDs::sequence || i == IDs::repeatSequence
-                         || i == IDs::loopedSequenceType || i == IDs::grooveStrength
-                         || i == IDs::proxyAllowed || i == IDs::resamplingQuality || i == IDs::warpTime)
+                         || i == IDs::loopedSequenceType || i == IDs::grooveStrength)
                 {
                     restart();
                 }
@@ -584,7 +580,7 @@ Edit::Edit (Options options)
 Edit::Edit (Engine& e, juce::ValueTree editState, EditRole role,
             LoadContext* sourceLoadContext, int numUndoLevelsToStore)
     : Edit ({ e, editState, ProjectItemID::fromProperty (editState, IDs::projectID),
-              role, sourceLoadContext, numUndoLevelsToStore, {}, {} })
+              role, sourceLoadContext, numUndoLevelsToStore })
 {
 }
 
@@ -767,14 +763,13 @@ void Edit::initialise()
 
 void Edit::initialiseTempoAndPitch()
 {
-    // Initiliase PitchSequence first as the TempoSequence depends on it
-    pitchSequence.initialise (*this, state.getOrCreateChildWithName (IDs::PITCHSEQUENCE, nullptr));
-
     const bool needToLoadOldTempoData = ! state.getChildWithName (IDs::TEMPOSEQUENCE).isValid();
     tempoSequence.setState (state.getOrCreateChildWithName (IDs::TEMPOSEQUENCE, nullptr), false);
 
     if (needToLoadOldTempoData)
         loadOldTimeSigInfo();
+
+    pitchSequence.initialise (*this, state.getOrCreateChildWithName (IDs::PITCHSEQUENCE, nullptr));
 }
 
 void Edit::initialiseTimecode (juce::ValueTree& transportState)
@@ -894,7 +889,7 @@ void Edit::removeZeroLengthClips()
 
     for (auto t : getClipTracks (*this))
         for (auto& c : t->getClips())
-            if (c->getPosition().getLength().inSeconds() <= 0.0)
+            if (c->getPosition().getLength() <= 0.0)
                 clipsToRemove.add (c);
 
     for (auto& c : clipsToRemove)
@@ -1193,12 +1188,12 @@ static Track* findTrackForPredicate (const Edit& edit, Predicate&& f)
     return result;
 }
 
-TimePosition Edit::getNextTimeOfInterest (TimePosition t)
+double Edit::getNextTimeOfInterest (double t)
 {
-    if (t < TimePosition())
-        return {};
+    if (t < 0)
+        return 0;
 
-    auto first = toPosition (getLength());
+    auto first = getLength();
 
     for (auto ct : getClipTracks (*this))
     {
@@ -1211,14 +1206,14 @@ TimePosition Edit::getNextTimeOfInterest (TimePosition t)
     return first;
 }
 
-TimePosition Edit::getPreviousTimeOfInterest (TimePosition t)
+double Edit::getPreviousTimeOfInterest (double t)
 {
-    if (t < TimePosition())
-        return {};
+    if (t < 0)
+        return 0;
 
-    TimePosition last;
+    double last = 0.0;
 
-    for (auto ct : getClipTracks (*this))
+    for (auto* ct : getClipTracks (*this))
     {
         auto d = ct->getPreviousTimeOfInterest (t);
 
@@ -1355,7 +1350,7 @@ void Edit::enableTimecodeSync (bool b)
     }
 }
 
-void Edit::setTimecodeOffset (TimeDuration newOffset)
+void Edit::setTimecodeOffset (double newOffset)
 {
     if (timecodeOffset != newOffset)
     {
@@ -1465,7 +1460,7 @@ void Edit::loadOldTimeSigInfo()
                 oldInfo = sequenceNode;
 
         if (auto tempo = tempoSequence.getTempo (0))
-            tempo->set (BeatPosition(), oldInfo->getDoubleAttribute ("bpm", 120.0), 0, false);
+            tempo->set (0, oldInfo->getDoubleAttribute ("bpm", 120.0), 0, false);
 
         if (auto timeSig = tempoSequence.getTimeSig (0))
         {
@@ -1618,22 +1613,22 @@ void Edit::timerCallback()
 }
 
 //==============================================================================
-TimeDuration Edit::getLength() const
+double Edit::getLength() const
 {
-    if (! totalEditLength)
+    if (totalEditLength < 0)
     {
-        totalEditLength = TimeDuration();
+        totalEditLength = 0;
 
         for (auto t : getClipTracks (*this))
-            totalEditLength = juce::jmax (*totalEditLength, t->getLength());
+            totalEditLength = juce::jmax (totalEditLength, t->getLength());
     }
 
-    return *totalEditLength;
+    return totalEditLength;
 }
 
-TimePosition Edit::getFirstClipTime() const
+double Edit::getFirstClipTime() const
 {
-    auto t = TimePosition::fromSeconds (getLength().inSeconds());
+    auto t = getLength();
     bool gotOne = false;
 
     for (auto track : getClipTracks (*this))
@@ -1641,11 +1636,11 @@ TimePosition Edit::getFirstClipTime() const
         if (auto first = track->getClips().getFirst())
         {
             gotOne = true;
-            t = std::min (t, first->getPosition().getStart());
+            t = juce::jmin (t, first->getPosition().getStart());
         }
     }
 
-    return gotOne ? t : TimePosition();
+    return gotOne ? t : 0.0;
 }
 
 juce::Array<Clip*> Edit::findClipsInLinkGroup (juce::String linkGroupID) const
@@ -2028,7 +2023,7 @@ void Edit::removeModifierTimer (ModifierTimer& mt)
     modifierTimers.removeFirstMatchingValue (&mt);
 }
 
-void Edit::updateModifierTimers (TimePosition editTime, int numSamples) const
+void Edit::updateModifierTimers (double editTime, int numSamples) const
 {
     const juce::ScopedLock sl (modifierTimers.getLock());
 
@@ -2147,15 +2142,15 @@ void Edit::pluginChanged (Plugin& p) noexcept
 }
 
 //==============================================================================
-void Edit::setClickTrackRange (TimeRange newTimes) noexcept
+void Edit::setClickTrackRange (EditTimeRange newTimes) noexcept
 {
     clickMark1Time = newTimes.getStart();
     clickMark2Time = newTimes.getEnd();
 }
 
-TimeRange Edit::getClickTrackRange() const noexcept
+EditTimeRange Edit::getClickTrackRange() const noexcept
 {
-    return TimeRange::between (clickMark1Time, clickMark2Time);
+    return EditTimeRange::between (clickMark1Time, clickMark2Time);
 }
 
 juce::String Edit::getClickTrackDevice() const
@@ -2286,7 +2281,7 @@ void Edit::updateFrozenTracks()
         if (auto outputDevice = dynamic_cast<WaveOutputDevice*> (dm.getOutputDeviceAt (j)))
         {
             juce::BigInteger frozen;
-            TimeDuration length;
+            double length = 0;
             int i = 0;
 
             for (auto t : getAllTracks (*this))
@@ -2305,9 +2300,9 @@ void Edit::updateFrozenTracks()
                 ++i;
             }
 
-            if (frozen.countNumberOfSetBits() > 0 && length > TimeDuration())
+            if (frozen.countNumberOfSetBits() > 0 && length > 0)
             {
-                length = length + TimeDuration::fromSeconds (5.0);
+                length += 5.0;
 
                 for (auto sm : getSelectionManagers (*this))
                     sm->deselectAll();
@@ -2320,7 +2315,7 @@ void Edit::updateFrozenTracks()
                 r.audioFormat = engine.getAudioFileFormatManager().getFrozenFileFormat();
                 r.blockSizeForAudio = dm.getBlockSize();
                 r.sampleRateForAudio = dm.getSampleRate();
-                r.time = { {}, length };
+                r.time = { 0.0, length };
                 r.canRenderInMono = true;
                 r.mustRenderInMono = false;
                 r.usePlugins = true;
@@ -2651,7 +2646,7 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingPreset (Engine& engine, juce:
     }
 
     double songTempo = 120.0;
-    auto length = TimeDuration::fromSeconds (1.0);
+    double length = 1.0;
 
     // Get original clip length
     if (auto firstClip = track->getClips().getFirst())
@@ -2660,7 +2655,7 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingPreset (Engine& engine, juce:
     // change tempo to match main edit
     if (tryToMatchTempo && editToMatch != nullptr)
     {
-        auto& targetTempo = editToMatch->tempoSequence.getTempoAt (TimePosition::fromSeconds (0.01));
+        auto& targetTempo = editToMatch->tempoSequence.getTempoAt (0.01);
         auto firstTempo = edit->tempoSequence.getTempo (0);
         firstTempo->setBpm (targetTempo.getBpm());
 
@@ -2669,7 +2664,7 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingPreset (Engine& engine, juce:
         if (couldMatchTempo != nullptr)
             *couldMatchTempo = true;
 
-        auto& targetPitch = editToMatch->pitchSequence.getPitchAt (TimePosition::fromSeconds (0.01));
+        auto& targetPitch = editToMatch->pitchSequence.getPitchAt (0.01);
 
         if (auto firstPitch = edit->pitchSequence.getPitch (0))
         {
@@ -2686,20 +2681,20 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingPreset (Engine& engine, juce:
     {
         if (auto firstClip = track->getClips().getFirst())
         {
-            length = TimeDuration::fromSeconds (length.inSeconds() * clipTempo / songTempo);
-            firstClip->setStart ({}, false, true);
+            length = length * clipTempo / songTempo;
+            firstClip->setStart (0.0, false, true);
             firstClip->setLength (length, true);
 
-            edit->getTransport().setLoopRange ({ TimePosition(), length });
+            edit->getTransport().setLoopRange ({ 0.0, length });
         }
     }
 
     if (v.hasType (IDs::PROGRESSION))
     {
-        auto clipLength = edit->tempoSequence.toTime (BeatPosition::fromBeats (32 * 4));
-        edit->getTransport().setLoopRange ({ TimePosition(), clipLength });
+        auto clipLength = edit->tempoSequence.beatsToTime (32 * 4);
+        edit->getTransport().setLoopRange ({ 0.0, clipLength });
 
-        if (auto mc = track->insertMIDIClip ({ TimePosition(), clipLength }, nullptr))
+        if (auto mc = track->insertMIDIClip ({ 0, clipLength }, nullptr))
         {
             if (auto pg = mc->getPatternGenerator())
             {
@@ -2712,10 +2707,10 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingPreset (Engine& engine, juce:
     }
     else if (v.hasType (IDs::BASSPATTERN))
     {
-        auto clipLength = edit->tempoSequence.toTime (BeatPosition::fromBeats (32 * 4));
-        edit->getTransport().setLoopRange ({ TimePosition(), clipLength });
+        auto clipLength = edit->tempoSequence.beatsToTime (32 * 4);
+        edit->getTransport().setLoopRange ({ 0.0, clipLength });
 
-        if (auto mc = track->insertMIDIClip ({ TimePosition(), clipLength }, nullptr))
+        if (auto mc = track->insertMIDIClip ({ 0, clipLength }, nullptr))
         {
             if (auto pg = mc->getPatternGenerator())
             {
@@ -2729,10 +2724,10 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingPreset (Engine& engine, juce:
     }
     else if (v.hasType (IDs::CHORDPATTERN))
     {
-        auto clipLength = edit->tempoSequence.toTime (BeatPosition::fromBeats (32 * 4));
-        edit->getTransport().setLoopRange ({ TimePosition(), clipLength });
+        auto clipLength = edit->tempoSequence.beatsToTime (32 * 4);
+        edit->getTransport().setLoopRange ({ 0.0, clipLength });
 
-        if (auto mc = track->insertMIDIClip ({ TimePosition(), clipLength }, nullptr))
+        if (auto mc = track->insertMIDIClip ({ 0, clipLength }, nullptr))
         {
             if (auto pg = mc->getPatternGenerator())
             {
@@ -2825,7 +2820,7 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingFile (Engine& engine, const j
             bool isDrums = forceMidiToDrums || (float (ch10Count) / allCount > 90.0f);
             auto track = isDrums ? drumTrack : midiTrack;
 
-            if (auto mc = track->insertMIDIClip ({ TimePosition(), TimePosition::fromSeconds (1.0) }, nullptr))
+            if (auto mc = track->insertMIDIClip ({ 0.0, 1.0 }, nullptr))
             {
                 if (track->pluginList.size() < 3)
                 {
@@ -2854,7 +2849,7 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingFile (Engine& engine, const j
                 // change tempo to match main edit
                 if (tryToMatchTempo && editToMatch != nullptr)
                 {
-                    auto& targetTempo = editToMatch->tempoSequence.getTempoAt (TimePosition::fromSeconds (0.01));
+                    auto& targetTempo = editToMatch->tempoSequence.getTempoAt (0.01);
                     auto firstTempo = edit->tempoSequence.getTempo (0);
                     firstTempo->setBpm (targetTempo.getBpm());
 
@@ -2869,9 +2864,8 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingFile (Engine& engine, const j
                 if (length < 0.001)
                     length = 2;
 
-                const TimeRange timeRange (TimePosition(), TimeDuration::fromSeconds (length));
-                mc->setPosition ({ timeRange, TimeDuration() });
-                edit->getTransport().setLoopRange (timeRange);
+                mc->setPosition ({ { 0.0, length }, 0.0 });
+                edit->getTransport().setLoopRange ({ 0.0, length });
             }
         }
     }
@@ -2880,7 +2874,7 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingFile (Engine& engine, const j
         const AudioFile af (engine, file);
         auto length = af.getLength();
 
-        if (auto wc = dynamic_cast<WaveAudioClip*> (audioTrack->insertNewClip (TrackItem::Type::wave, { TimePosition(), TimePosition::fromSeconds (1.0) }, nullptr)))
+        if (auto wc = dynamic_cast<WaveAudioClip*> (audioTrack->insertNewClip (TrackItem::Type::wave, { 0.0, 1.0 }, nullptr)))
         {
             wc->setUsesProxy (false);
             wc->getSourceFileReference().setToDirectFileReference (file, false);
@@ -2889,14 +2883,12 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingFile (Engine& engine, const j
             {
                 if (tryToMatchTempo || tryToMatchPitch)
                 {
-                   #if ! TRACKTION_ENABLE_REALTIME_TIMESTRETCHING
                     wc->setUsesTimestretchedPreview (true);
-                   #endif
                     wc->setLoopInfo (af.getInfo().loopInfo);
                     wc->setTimeStretchMode (TimeStretcher::defaultMode);
                 }
 
-                auto& targetTempo = editToMatch->tempoSequence.getTempoAt (TimePosition::fromSeconds (0.01));
+                auto& targetTempo = editToMatch->tempoSequence.getTempoAt (0.01);
                 auto targetPitch = editToMatch->pitchSequence.getPitch (0);
 
                 if (tryToMatchTempo)
@@ -2930,9 +2922,8 @@ std::unique_ptr<Edit> Edit::createEditForPreviewingFile (Engine& engine, const j
                 }
             }
 
-            const TimeRange timeRange (TimePosition(), TimeDuration::fromSeconds (length));
-            wc->setPosition ({ timeRange, TimeDuration() });
-            edit->getTransport().setLoopRange (timeRange);
+            wc->setPosition ({ { 0.0, length }, 0.0 });
+            edit->getTransport().setLoopRange ({ 0.0, length });
         }
     }
 
@@ -3019,4 +3010,4 @@ juce::Array<Edit*> ActiveEdits::getEdits() const
     return eds;
 }
 
-}} // namespace tracktion { inline namespace engine
+}

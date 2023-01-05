@@ -8,26 +8,26 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 #if TRACKTION_BENCHMARKS
 
-using namespace tracktion::graph;
+using namespace tracktion_graph;
 
 //==============================================================================
 //==============================================================================
-class WaveNodeBenchmarks : public juce::UnitTest
+class PerformanceTests : public juce::UnitTest
 {
 public:
-    WaveNodeBenchmarks()
+    PerformanceTests()
         : juce::UnitTest ("Node Benchmarks", "tracktion_benchmarks")
     {
     }
     
     void runTest() override
     {
-        using namespace tracktion::graph;
+        using namespace tracktion_graph;
         test_utilities::TestSetup ts;
         ts.sampleRate = 96000.0;
         ts.blockSize = 128;
@@ -97,14 +97,14 @@ private:
         // Create Edit with 20 tracks
         // Create 12 5s files per track
         // Render the whole thing
-        using namespace tracktion::graph;
+        using namespace tracktion_graph;
         using namespace test_utilities;
-        auto& engine = *tracktion::engine::Engine::getEngines()[0];
+        auto& engine = *tracktion_engine::Engine::getEngines()[0];
         const auto description = benchmark_utilities::getDescription (opts)
                                     + juce::String (useSingleFile ? ", single file" : ", multiple files");
         
-        tracktion::graph::PlayHead playHead;
-        tracktion::graph::PlayHeadState playHeadState { playHead };
+        tracktion_graph::PlayHead playHead;
+        tracktion_graph::PlayHeadState playHeadState { playHead };
         ProcessState processState { playHeadState };
 
         //===
@@ -116,7 +116,7 @@ private:
 
         const auto totalNumFiles = size_t (numTracks * numFilesPerTrack);
         expect (useSingleFile || (context.files.size() == totalNumFiles));
-        expectWithinAbsoluteError (context.edit->getLength().inSeconds(), durationInSeconds, 0.01);
+        expectWithinAbsoluteError (context.edit->getLength(), durationInSeconds, 0.01);
 
         renderEdit (*this, opts);
     }
@@ -137,7 +137,7 @@ private:
         edit->ensureNumberOfAudioTracks (numTracks);
         
         if (useSingleFile)
-            files.push_back (tracktion::graph::test_utilities::getSinFile<juce::WavAudioFormat> (sampleRate, durationOfFile, 2, 220.0f));
+            files.push_back (tracktion_graph::test_utilities::getSinFile<juce::WavAudioFormat> (sampleRate, durationOfFile, 2, 220.0f));
 
         for (auto t : getAudioTracks (*edit))
         {
@@ -146,12 +146,12 @@ private:
                 if (! useSingleFile)
                 {
                     const float frequency = (float) r.nextInt ({ 110, 880 });
-                    auto file = tracktion::graph::test_utilities::getSinFile<juce::WavAudioFormat> (sampleRate, durationOfFile, 2, frequency);
+                    auto file = tracktion_graph::test_utilities::getSinFile<juce::WavAudioFormat> (sampleRate, durationOfFile, 2, frequency);
                     files.push_back (std::move (file));
                 }
 
                 auto& file = files.back();
-                const auto timeRange = TimeRange (TimePosition::fromSeconds (durationOfFile) * i, TimeDuration::fromSeconds (durationOfFile));
+                const auto timeRange = EditTimeRange::withStartAndLength (i * durationOfFile, durationOfFile);
                 auto waveClip = t->insertWaveClip (file->getFile().getFileName(), file->getFile(),
                                                    {{ timeRange }}, false);
                 waveClip->setGainDB (gainToDb (1.0f / numTracks));
@@ -162,69 +162,8 @@ private:
     }
 };
 
-static WaveNodeBenchmarks waveNodeBenchmarks;
-
-
-//==============================================================================
-//==============================================================================
-class ResamplingBenchmarks : public juce::UnitTest
-{
-public:
-    ResamplingBenchmarks()
-        : juce::UnitTest ("Resampling Benchmarks", "tracktion_benchmarks")
-    {
-    }
-
-    void runTest() override
-    {
-        runResamplingRendering ("lagrange",     ResamplingQuality::lagrange);
-        runResamplingRendering ("sincFast",     ResamplingQuality::sincFast);
-        runResamplingRendering ("sincMedium",   ResamplingQuality::sincMedium);
-        runResamplingRendering ("sincBest",     ResamplingQuality::sincBest);
-    }
-
-private:
-    //==============================================================================
-    //==============================================================================
-    void runResamplingRendering (juce::String qualityName,
-                                 ResamplingQuality quality)
-    {
-        constexpr double fileSampleRate = 96000.0;
-        constexpr double playbackSampleRate = 44100.0;
-
-        beginTest (qualityName);
-
-        using namespace test_utilities;
-
-        auto& engine = *Engine::getEngines()[0];
-        auto edit = Edit::createSingleTrackEdit (engine);
-        edit->ensureNumberOfAudioTracks (1);
-        auto t = getAudioTracks (*edit)[0];
-
-        const auto durationOfFile = 30s;
-        auto sinFile = getSinFile<juce::WavAudioFormat> (fileSampleRate, 30.0, 2, 220.0f);
-        const auto timeRange = TimeRange (0s, TimePosition (durationOfFile));
-        auto waveClip = t->insertWaveClip (sinFile->getFile().getFileName(), sinFile->getFile(),
-                                           {{ timeRange }}, false);
-        waveClip->setUsesProxy (false);
-        waveClip->setResamplingQuality (quality);
-
-        Renderer::Statistics results;
-
-        {
-            ScopedBenchmark sb (createBenchmarkDescription ("Resampling", "WaveNode quality", "30s sin wave, 96KHz to 44.1Khz, " + qualityName.toStdString()));
-            results = Renderer::measureStatistics ("Rendering resampling",
-                                                   *edit, timeRange,
-                                                   toBitSet ({ t }),
-                                                   256, playbackSampleRate);
-        }
-
-        expectWithinAbsoluteError (results.peak, 1.0f, 0.001f);
-    }
-};
-
-static ResamplingBenchmarks resamplingBenchmarks;
+static PerformanceTests performanceTests;
 
 #endif
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

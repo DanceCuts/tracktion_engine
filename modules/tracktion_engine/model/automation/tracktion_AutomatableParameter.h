@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 class AutomatableParameter   : public juce::ReferenceCountedObject,
@@ -81,7 +81,7 @@ public:
     // should be called to change a parameter when a user is actively moving it
     void setParameter (float value, juce::NotificationType);
     void setNormalisedParameter (float value, juce::NotificationType);
-    void updateToFollowCurve (TimePosition);
+    void updateToFollowCurve (double time);
 
     /** Call to indicate this parameter is about to be changed. */
     void parameterChangeGestureBegin();
@@ -116,7 +116,6 @@ public:
         Edit& edit;
         juce::ValueTree state;
         juce::CachedValue<float> value, offset, curve;
-        juce::CachedValue<float> inputLimitStart, inputLimitEnd;
     };
 
     /** Creates an assignment for a given source.
@@ -164,7 +163,7 @@ public:
     void updateStream();
 
     /** Updates the parameter and modifier values from its current automation sources. */
-    void updateFromAutomationSources (TimePosition);
+    void updateFromAutomationSources (double);
 
     //==============================================================================
     virtual bool isParameterActive() const                          { return true; }
@@ -172,7 +171,7 @@ public:
     virtual int getNumberOfStates() const                           { return 0; }
     virtual float getValueForState (int) const                      { return 0; }
     virtual int getStateForValue (float) const                      { return 0; }
-    virtual std::optional<float> getDefaultValue() const;
+    virtual float getDefaultValue() const;
 
     virtual bool hasLabels()  const                                 { return false; }
     virtual juce::String getLabelForValue (float) const             { return {}; }
@@ -399,13 +398,13 @@ struct AutomationIterator
 
     bool isEmpty() const noexcept               { return points.size() <= 1; }
 
-    void setPosition (TimePosition) noexcept;
+    void setPosition (double newTime) noexcept;
     float getCurrentValue() noexcept            { return currentValue; }
 
 private:
     struct AutoPoint
     {
-        TimePosition time;
+        double time;
         float value;
     };
 
@@ -416,4 +415,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (AutomationIterator)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

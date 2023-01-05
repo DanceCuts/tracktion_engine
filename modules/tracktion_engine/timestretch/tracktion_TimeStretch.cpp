@@ -26,7 +26,7 @@
  #define NOMINMAX
 #endif
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 TimeStretcher::ElastiqueProOptions::ElastiqueProOptions (const juce::String& string)
@@ -101,7 +101,6 @@ struct ElastiqueStretcher  : public TimeStretcher::Stretcher
           samplesPerOutputBuffer (samplesPerBlock)
     {
         CRASH_TRACER
-        jassert (sourceSampleRate > 0.0);
         int res = CElastiqueProV3If::CreateInstance (elastique, samplesPerBlock, numChannels, (float) sourceSampleRate,
                                                      getElastiqueMode (mode), minFactor);
         jassert (res == 0); juce::ignoreUnused (res);
@@ -122,7 +121,7 @@ struct ElastiqueStretcher  : public TimeStretcher::Stretcher
         }
     }
 
-    ~ElastiqueStretcher() override
+    ~ElastiqueStretcher()
     {
         if (elastique != nullptr)
             CElastiqueProV3If::DestroyInstance (elastique);
@@ -184,21 +183,10 @@ private:
     {
         switch (mode)
         {
-            case TimeStretcher::elastiquePro:           return CElastiqueProV3If::kV3Pro;
             case TimeStretcher::elastiqueEfficient:     return CElastiqueProV3If::kV3Eff;
             case TimeStretcher::elastiqueMobile:        return CElastiqueProV3If::kV3mobile;
             case TimeStretcher::elastiqueMonophonic:    return CElastiqueProV3If::kV3Monophonic;
-            case TimeStretcher::disabled:               [[ fallthrough ]];
-            case TimeStretcher::elastiqueTransient:     [[ fallthrough ]];
-            case TimeStretcher::elastiqueTonal:         [[ fallthrough ]];
-            case TimeStretcher::soundtouchNormal:       [[ fallthrough ]];
-            case TimeStretcher::soundtouchBetter:       [[ fallthrough ]];
-            case TimeStretcher::melodyne:               [[ fallthrough ]];
-            case TimeStretcher::rubberbandMelodic:      [[ fallthrough ]];
-            case TimeStretcher::rubberbandPercussive:   [[ fallthrough ]];
-            default:
-                jassertfalse;
-                return CElastiqueProV3If::kV3Pro;
+            default:                                    return CElastiqueProV3If::kV3Pro;
         }
     }
 
@@ -372,7 +360,7 @@ private:
 #define Point CarbonDummyPointName
 #define Component CarbonDummyCompName
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine
 #if TRACKTION_BUILD_RUBBERBAND
  #if __has_include(<rubberband/single/RubberBandSingle.cpp>)
   #include <rubberband/single/RubberBandSingle.cpp>
@@ -390,7 +378,7 @@ private:
   #error "TRACKTION_ENABLE_TIMESTRETCH_RUBBERBAND enabled but not found in the search path!"
  #endif
 #endif
-namespace tracktion { inline namespace engine {
+namespace tracktion_engine {
     
 #undef WIN32_LEAN_AND_MEAN
 #undef Point
@@ -433,7 +421,7 @@ struct RubberBandStretcher  : public TimeStretcher::Stretcher
 
     bool setSpeedAndPitch (float speedRatio, float semitonesUp) override
     {
-        const float pitch = juce::jlimit (0.25f, 4.0f, tracktion::engine::Pitch::semitonesToRatio (semitonesUp));
+        const float pitch = juce::jlimit (0.25f, 4.0f, tracktion_engine::Pitch::semitonesToRatio (semitonesUp));
 
         rubberBandStretcher.setPitchScale (pitch);
         rubberBandStretcher.setTimeRatio (speedRatio);
@@ -736,7 +724,7 @@ void TimeStretcher::initialise (double sourceSampleRate, int samplesPerBlock,
         case rubberbandMelodic:
         case rubberbandPercussive:
             juce::ignoreUnused (options, realtime);
-            stretcher.reset (new tracktion::engine::RubberBandStretcher (sourceSampleRate, samplesPerBlock, numChannels,
+            stretcher.reset (new tracktion_engine::RubberBandStretcher (sourceSampleRate, samplesPerBlock, numChannels,
                                                                         mode == rubberbandPercussive));
             break;
        #else
@@ -829,4 +817,4 @@ int TimeStretcher::flush (float* const* outChannels)
     return 0;
 }
 
-}} // namespace tracktion { inline namespace engine
+}

@@ -13,18 +13,18 @@
 #include "tracktion_AudioNode.h"
 
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 class TimedMutingAudioNode  : public SingleInputAudioNode
 {
 public:
-    TimedMutingAudioNode (AudioNode* inp, const juce::Array<legacy::EditTimeRange>& muteTimes_)
+    TimedMutingAudioNode (AudioNode* inp, const juce::Array<EditTimeRange>& muteTimes_)
         : SingleInputAudioNode (inp), muteTimes (muteTimes_)
     {
     }
 
-    void renderSection (const AudioRenderContext& rc, legacy::EditTimeRange editTime)
+    void renderSection (const AudioRenderContext& rc, EditTimeRange editTime)
     {
         for (auto r : muteTimes)
         {
@@ -78,7 +78,7 @@ public:
     }
 
 private:
-    juce::Array<legacy::EditTimeRange> muteTimes;
+    juce::Array<EditTimeRange> muteTimes;
 
     bool renderingNeeded (const AudioRenderContext& rc) const
     {
@@ -107,4 +107,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (TimedMutingAudioNode)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

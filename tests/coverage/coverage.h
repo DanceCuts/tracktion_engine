@@ -40,8 +40,6 @@ int main (int, char**)
                                  { "Tracktion",
                                    "Tracktion:Longer",
                                    "tracktion_benchmarks",
-                                   "tracktion_core",
                                    "tracktion_graph",
-                                   "tracktion_engine",
                                    "tracktion_graph_performance" });
 }

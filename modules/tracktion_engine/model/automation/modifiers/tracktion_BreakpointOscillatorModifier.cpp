@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 namespace BezierHelpers
@@ -102,11 +102,11 @@ namespace BezierHelpers
 struct BreakpointOscillatorModifier::BreakpointOscillatorModifierTimer    : public ModifierTimer
 {
     BreakpointOscillatorModifierTimer (BreakpointOscillatorModifier& bom)
-        : modifier (bom)
+        : modifier (bom), tempoSequence (bom.edit.tempoSequence)
     {
     }
 
-    void updateStreamTime (TimePosition editTime, int numSamples) override
+    void updateStreamTime (double editTime, int numSamples) override
     {
         using namespace ModifierCommon;
         const double blockLength = numSamples / modifier.getSampleRate();
@@ -123,7 +123,7 @@ struct BreakpointOscillatorModifier::BreakpointOscillatorModifierTimer    : publ
             ramp.setDuration (durationPerPattern);
 
             if (syncTypeThisBlock == transport)
-                ramp.setPosition (std::fmod ((float) editTime.inSeconds(), durationPerPattern));
+                ramp.setPosition (std::fmod ((float) editTime, durationPerPattern));
 
             modifier.setPhase (ramp.getProportion());
 
@@ -132,15 +132,15 @@ struct BreakpointOscillatorModifier::BreakpointOscillatorModifierTimer    : publ
         }
         else
         {
-            tempoSequence.set (editTime);
-            const auto currentTempo = tempoSequence.getTempo();
-            const auto currentTimeSig = tempoSequence.getTimeSignature();
-            const auto proportionOfBar = ModifierCommon::getBarFraction (rateTypeThisBlock);
+            tempoSequence.setTime (editTime);
+            auto currentTempo = tempoSequence.getCurrentTempo();
+            auto proportionOfBar = ModifierCommon::getBarFraction (rateTypeThisBlock);
 
             if (syncTypeThisBlock == transport)
             {
-                const auto editTimeInBeats = tempoSequence.getBeats().inBeats();
-                const auto bars = (editTimeInBeats / currentTimeSig.numerator) * rateThisBlock;
+                auto editTimeInBeats = (float) (currentTempo.startBeatInEdit
+                                                 + (editTime - currentTempo.startTime) * currentTempo.beatsPerSecond);
+                auto bars = (editTimeInBeats / currentTempo.numerator) * rateThisBlock;
 
                 if (rateTypeThisBlock >= fourBars && rateTypeThisBlock <= sixtyFourthD)
                 {
@@ -150,9 +150,9 @@ struct BreakpointOscillatorModifier::BreakpointOscillatorModifierTimer    : publ
             }
             else
             {
-                auto bpm = (currentTempo * rateThisBlock) / proportionOfBar;
+                auto bpm = (currentTempo.bpm * rateThisBlock) / proportionOfBar;
                 auto secondsPerBeat = 60.0 / bpm;
-                auto secondsPerStep = static_cast<float> (secondsPerBeat * currentTimeSig.numerator);
+                auto secondsPerStep = static_cast<float> (secondsPerBeat * currentTempo.numerator);
                 auto secondsPerPattern = secondsPerStep;
                 ramp.setDuration (secondsPerPattern);
 
@@ -178,7 +178,7 @@ struct BreakpointOscillatorModifier::BreakpointOscillatorModifierTimer    : publ
 
     BreakpointOscillatorModifier& modifier;
     Ramp ramp;
-    tempo::Sequence::Position tempoSequence { createPosition (modifier.edit.tempoSequence) };
+    TempoSequencePosition tempoSequence;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (BreakpointOscillatorModifierTimer)
 };
@@ -453,4 +453,4 @@ void BreakpointOscillatorModifier::valueTreeChanged()
         changedTimer.startTimerHz (30);
 }
 
-}} // namespace tracktion { inline namespace engine
+}

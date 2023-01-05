@@ -20,7 +20,6 @@
 #define CHOC_SAMPLE_BUFFERS_HEADER_INCLUDED
 
 #include <memory>
-#include <algorithm>
 #include "../platform/choc_Assert.h"
 
 /**
@@ -235,7 +234,7 @@ struct BufferView
     }
 
     /// Sets all samples in the view to zero.
-    void clear() const                                          { if (! size.isEmpty()) data.clear (size); }
+    void clear() const                                          { data.clear (size); }
 
     /// Allows a view of non-const samples to be cast to one of const samples.
     operator BufferView<const Sample, LayoutType>() const       { return { static_cast<LayoutType<const Sample>> (data), size }; }
@@ -289,10 +288,8 @@ struct AllocatedBuffer
     AllocatedBuffer (const SourceView& viewToCopy);
 
     /// Allows the buffer to be cast to a compatible view.
-    operator BufferView<Sample, LayoutType>() const                             { return view; }
-
-    /// Allows the buffer to be cast to a compatible view.
-    operator BufferView<const Sample, LayoutType>() const                       { return static_cast<BufferView<const Sample, LayoutType>> (view); }
+    template <typename TargetSampleType>
+    operator BufferView<TargetSampleType, LayoutType>() const                   { return static_cast<BufferView<TargetSampleType, LayoutType>> (view); }
 
     /// Provides a version of this buffer as a view.
     BufferView<Sample, LayoutType> getView() const                              { return view; }

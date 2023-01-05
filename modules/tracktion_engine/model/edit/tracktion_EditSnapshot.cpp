@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -84,14 +84,14 @@ EditSnapshot::~EditSnapshot()
     listHolder->list->removeSnapshot (*this);
 }
 
-void EditSnapshot::setState (juce::ValueTree newState, TimeDuration editLength)
+void EditSnapshot::setState (juce::ValueTree newState, double editLength)
 {
     if (state.getReferenceCount() == 1)
         state = std::move (newState);
     else
         state = newState.createCopy();
 
-    length = editLength.inSeconds();
+    length = editLength;
 }
 
 bool EditSnapshot::isValid() const
@@ -227,7 +227,7 @@ void EditSnapshot::refreshFromProjectItem (ProjectItem::Ptr pi)
         return;
 
     name = pi->getName();
-    setState (newState, TimeDuration::fromSeconds (pi->getLength()));
+    setState (newState, pi->getLength());
     refreshFromState();
 }
 
@@ -288,11 +288,11 @@ void EditSnapshot::addMarkers (const juce::XmlElement& track)
         Marker m;
         m.name      = clip->getStringAttribute ("name", TRANS("unnamed"));
         m.colour    = juce::Colour::fromString (clip->getStringAttribute ("colour", TRANS("unnamed")));
-        auto start  = TimePosition::fromSeconds (clip->getDoubleAttribute ("start", 0.0));
-        auto len    = TimeDuration::fromSeconds (clip->getDoubleAttribute ("length", 0.0));
+        auto start  = clip->getDoubleAttribute ("start", 0.0);
+        auto len    = clip->getDoubleAttribute ("length", 0.0);
         m.time      = { start, start + len };
 
-        if (len > 0s)
+        if (len > 0.0)
             markers.add (m);
     }
 }
@@ -315,4 +315,4 @@ juce::ReferenceCountedArray<EditSnapshot> EditSnapshot::getNestedEditObjects()
     return result;
 }
 
-}} // namespace tracktion { inline namespace engine
+}

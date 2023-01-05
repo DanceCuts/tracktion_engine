@@ -9,7 +9,7 @@
 */
 
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 namespace
@@ -58,30 +58,30 @@ namespace
 
 //==============================================================================
 //==============================================================================
-ClickGenerator::ClickGenerator (Edit& e, bool isMidi, TimePosition endTime)
+ClickGenerator::ClickGenerator (Edit& e, bool isMidi, double endTime)
     : edit (e), midi (isMidi)
 {
-    endTime = juce::jmin (endTime, TimePosition::fromSeconds (juce::jmax (edit.getLength().inSeconds() * 2, 60.0 * 60.0)));
+    endTime = juce::jmin (endTime, juce::jmax (edit.getLength() * 2, 60.0 * 60.0));
 
-    auto pos = createPosition (edit.tempoSequence);
-    pos.set (TimePosition::fromSeconds (1.0e-10));
+    TempoSequencePosition pos (edit.tempoSequence);
+    pos.setTime (1.0e-10);
     pos.addBars (-8);
 
     while (pos.getTime() < endTime)
     {
-        auto barsBeats = pos.getBarsBeats();
+        auto barsBeats = pos.getBarsBeatsTime();
 
         if (barsBeats.getWholeBeats() == 0)
             loudBeats.setBit (beatTimes.size());
 
         beatTimes.add (pos.getTime());
-        pos.add (1_bd);
+        pos.addBeats (1.0);
     }
 
-    beatTimes.add (TimePosition::fromSeconds (1000000.0));
+    beatTimes.add (1000000.0);
 }
 
-void ClickGenerator::prepareToPlay (double newSampleRate, TimePosition startTime)
+void ClickGenerator::prepareToPlay (double newSampleRate, double startTime)
 {
     if (sampleRate != newSampleRate)
     {
@@ -126,7 +126,7 @@ void ClickGenerator::prepareToPlay (double newSampleRate, TimePosition startTime
 }
 
 void ClickGenerator::processBlock (choc::buffer::ChannelArrayView<float>* destBuffer,
-                                   MidiMessageArray* bufferForMidiMessages, TimeRange editTime)
+                                   MidiMessageArray* bufferForMidiMessages, EditTimeRange editTime)
 {
     // Use the end time here to avoid the end of blocks playing the start of a beat
     if (isMutedAtTime (editTime.getEnd()))
@@ -143,7 +143,7 @@ void ClickGenerator::processBlock (choc::buffer::ChannelArrayView<float>* destBu
 
     if (midi && bufferForMidiMessages != nullptr)
     {
-        auto t = beatTimes.getUnchecked (currentBeat);
+        double t = beatTimes.getUnchecked (currentBeat);
 
         while (t < editTime.getEnd())
         {
@@ -152,7 +152,7 @@ void ClickGenerator::processBlock (choc::buffer::ChannelArrayView<float>* destBu
 
             if (t >= editTime.getStart())
                 bufferForMidiMessages->addMidiMessage (juce::MidiMessage::noteOn (10, note, gain),
-                                                       (t - editTime.getStart()).inSeconds(),
+                                                       t - editTime.getStart(),
                                                        MidiMessageArray::notMPE);
 
             t = beatTimes.getUnchecked (++currentBeat);
@@ -161,7 +161,7 @@ void ClickGenerator::processBlock (choc::buffer::ChannelArrayView<float>* destBu
     else if (! midi && destBuffer != nullptr)
     {
         --currentBeat;
-        auto t = beatTimes[currentBeat];
+        double t = beatTimes[currentBeat];
 
         while (t < editTime.getEnd())
         {
@@ -169,7 +169,7 @@ void ClickGenerator::processBlock (choc::buffer::ChannelArrayView<float>* destBu
 
             if (b.getNumSamples() > 0)
             {
-                auto clickStartOffset = juce::roundToInt (((t - editTime.getStart()).inSeconds()) * sampleRate);
+                auto clickStartOffset = juce::roundToInt ((t - editTime.getStart()) * sampleRate);
 
                 auto dstStart = (choc::buffer::FrameCount) std::max (0, clickStartOffset);
                 auto srcStart = (choc::buffer::FrameCount) std::max (0, -clickStartOffset);
@@ -189,7 +189,7 @@ void ClickGenerator::processBlock (choc::buffer::ChannelArrayView<float>* destBu
     }
 }
 
-bool ClickGenerator::isMutedAtTime (TimePosition time) const
+bool ClickGenerator::isMutedAtTime (double time) const
 {
     const bool clickEnabled = edit.clickTrackEnabled.get();
 
@@ -205,21 +205,21 @@ bool ClickGenerator::isMutedAtTime (TimePosition time) const
 
 //==============================================================================
 //==============================================================================
-ClickNode::ClickNode (Edit& e, int numAudioChannels, bool isMidi, tracktion::graph::PlayHead& playHeadToUse)
+ClickNode::ClickNode (Edit& e, int numAudioChannels, bool isMidi, tracktion_graph::PlayHead& playHeadToUse)
     : edit (e), playHead (playHeadToUse),
-      clickGenerator (edit, isMidi, Edit::getMaximumEditEnd()),
+      clickGenerator (edit, isMidi, Edit::maximumLength),
       numChannels (numAudioChannels), generateMidi (isMidi)
 {
 }
 
-std::vector<tracktion::graph::Node*> ClickNode::getDirectInputNodes()
+std::vector<tracktion_graph::Node*> ClickNode::getDirectInputNodes()
 {
     return {};
 }
 
-tracktion::graph::NodeProperties ClickNode::getNodeProperties()
+tracktion_graph::NodeProperties ClickNode::getNodeProperties()
 {
-    tracktion::graph::NodeProperties props;
+    tracktion_graph::NodeProperties props;
     props.hasAudio = ! generateMidi;
     props.hasMidi = generateMidi;
     props.numberOfChannels = numChannels;
@@ -228,11 +228,11 @@ tracktion::graph::NodeProperties ClickNode::getNodeProperties()
     return props;
 }
 
-void ClickNode::prepareToPlay (const tracktion::graph::PlaybackInitialisationInfo& info)
+void ClickNode::prepareToPlay (const tracktion_graph::PlaybackInitialisationInfo& info)
 {
     sampleRate = info.sampleRate;
     clickGenerator.prepareToPlay (sampleRate,
-                                  TimePosition::fromSamples (playHead.getPosition(), sampleRate));
+                                  tracktion_graph::sampleToTime (playHead.getPosition(), sampleRate));
 }
 
 bool ClickNode::isReadyToProcess()
@@ -248,7 +248,7 @@ void ClickNode::process (ProcessContext& pc)
         return;
 
     const auto splitTimelinePosition = referenceSampleRangeToSplitTimelineRange (playHead, pc.referenceSampleRange);
-    const auto editTime = tracktion::timeRangeFromSamples (splitTimelinePosition.timelineRange1, sampleRate);
+    const EditTimeRange editTime (tracktion_graph::sampleToTime (splitTimelinePosition.timelineRange1, sampleRate));
     clickGenerator.processBlock (&pc.buffers.audio, &pc.buffers.midi, editTime);
 }
 
@@ -310,4 +310,4 @@ namespace Click
     }
 }
 
-}} // namespace tracktion { inline namespace engine
+}

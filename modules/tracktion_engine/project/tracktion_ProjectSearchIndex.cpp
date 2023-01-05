@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 struct IndexedWord
@@ -259,7 +259,7 @@ struct FalseOperation  : public SearchOperation
 };
 
 //==============================================================================
-inline SearchOperation* createPluralOptions (juce::String s)
+SearchOperation* createPluralOptions (juce::String s)
 {
     SearchOperation* c = new WordMatchOperation (s);
 
@@ -328,7 +328,7 @@ inline SearchOperation* createPluralOptions (juce::String s)
     return c;
 }
 
-inline SearchOperation* multipleWordMatch (const juce::String& s)
+SearchOperation* multipleWordMatch (const juce::String& s)
 {
     juce::StringArray a;
     a.addTokens (s, false);
@@ -346,7 +346,7 @@ inline SearchOperation* multipleWordMatch (const juce::String& s)
     return c;
 }
 
-inline SearchOperation* createCondition (const juce::StringArray& words, int start, int length)
+SearchOperation* createCondition (const juce::StringArray& words, int start, int length)
 {
     if (length == 0)
         return {};
@@ -412,4 +412,4 @@ SearchOperation* createSearchForKeywords (const juce::String& keywords)
     return new FalseOperation();
 }
 
-}} // namespace tracktion { inline namespace engine
+}

@@ -13,7 +13,7 @@
 #include "tracktion_AudioNode.h"
 
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -30,9 +30,9 @@ public:
 
     */
     WaveAudioNode (const AudioFile& file,
-                   legacy::EditTimeRange editTime,
+                   EditTimeRange editTime,
                    double offset,
-                   legacy::EditTimeRange loopSection,
+                   EditTimeRange loopSection,
                    LiveClipLevel level,
                    double speedRatio,
                    const juce::AudioChannelSet& channelsToUse);
@@ -52,11 +52,11 @@ public:
     void renderAdding (const AudioRenderContext&) override;
     void prepareForNextBlock (const AudioRenderContext&) override;
 
-    void renderSection (const AudioRenderContext&, legacy::EditTimeRange editTime);
+    void renderSection (const AudioRenderContext&, EditTimeRange editTime);
 
 private:
     //==============================================================================
-    legacy::EditTimeRange editPosition, loopSection;
+    EditTimeRange editPosition, loopSection;
     double offset = 0;
     double originalSpeedRatio = 0, outputSampleRate = 44100.0;
 
@@ -75,4 +75,4 @@ private:
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (WaveAudioNode)
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

@@ -8,13 +8,13 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 WaveAudioNode::WaveAudioNode (const AudioFile& af,
-                              legacy::EditTimeRange editTime,
+                              EditTimeRange editTime,
                               double off,
-                              legacy::EditTimeRange loop,
+                              EditTimeRange loop,
                               LiveClipLevel level,
                               double speed,
                               const juce::AudioChannelSet& channelSetToUse)
@@ -133,7 +133,7 @@ void WaveAudioNode::renderAdding (const AudioRenderContext& rc)
     invokeSplitRender (rc, *this);
 }
 
-void WaveAudioNode::renderSection (const AudioRenderContext& rc, legacy::EditTimeRange editTime)
+void WaveAudioNode::renderSection (const AudioRenderContext& rc, EditTimeRange editTime)
 {
     // keep a local copy, because releaseAudioNodeResources may remove the reader halfway through..
     const auto localReader = reader;
@@ -237,4 +237,4 @@ void WaveAudioNode::prepareForNextBlock (const AudioRenderContext& rc)
         localReader->setReadPosition (editTimeToFileSample (rc.getEditTime().editRange1.getStart()));
 }
 
-}} // namespace tracktion { inline namespace engine
+}

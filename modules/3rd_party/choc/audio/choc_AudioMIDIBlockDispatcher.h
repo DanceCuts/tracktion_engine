@@ -19,7 +19,6 @@
 #ifndef CHOC_AUDIOMIDIDISPATCHER_HEADER_INCLUDED
 #define CHOC_AUDIOMIDIDISPATCHER_HEADER_INCLUDED
 
-#include <functional>
 #include "../containers/choc_Span.h"
 #include "../containers/choc_SingleReaderSingleWriterFIFO.h"
 #include "choc_SampleBuffers.h"
@@ -70,9 +69,6 @@ struct AudioMIDIBlockDispatcher
     void setAudioBuffers (const float** inputData, int numInputChannels,
                           float** outputData, int numOutputChannels, int numFrames);
 
-    /// Before calling processInChunks(), this may be called to receive MIDI output events.
-    void setMidiOutputCallback (std::function<void(uint32_t frame, choc::midi::ShortMessage)>);
-
     //==============================================================================
     /// This struct is given to a client callback to process.
     struct Block
@@ -80,7 +76,6 @@ struct AudioMIDIBlockDispatcher
         choc::buffer::ChannelArrayView<const float> audioInput;
         choc::buffer::ChannelArrayView<float> audioOutput;
         choc::span<choc::midi::ShortMessage> midiMessages;
-        std::function<void(uint32_t frame, choc::midi::ShortMessage)>& onMidiOutputMessage;
     };
 
     /// After calling setAudioBuffers() to provide the audio channel data, call this
@@ -100,7 +95,6 @@ private:
     //==============================================================================
     choc::buffer::ChannelArrayView<float> nextOutputBlock;
     choc::buffer::ChannelArrayView<const float> nextInputBlock;
-    std::function<void(uint32_t frame, choc::midi::ShortMessage)> midiOutputMessageCallback;
 
     using Clock = std::chrono::high_resolution_clock;
     using TimePoint = Clock::time_point;
@@ -111,7 +105,6 @@ private:
     TimePoint lastBlockTime;
     std::vector<uint32_t> midiMessageTimes;
     std::vector<choc::midi::ShortMessage> midiMessages;
-    uint32_t chunkFrameOffset = 0;
 
     struct TimestampedMIDIMessage
     {
@@ -191,25 +184,10 @@ inline void AudioMIDIBlockDispatcher::setAudioBuffers (const float** inputData, 
                                                            static_cast<choc::buffer::FrameCount> (numFrames)));
 }
 
-inline void AudioMIDIBlockDispatcher::setMidiOutputCallback (std::function<void(uint32_t frame, choc::midi::ShortMessage)> callback)
-{
-    if (! callback)
-    {
-        midiOutputMessageCallback = {};
-        return;
-    }
-
-    midiOutputMessageCallback = [this, callback = std::move (callback)] (uint32_t frame, choc::midi::ShortMessage m)
-                                {
-                                    callback (frame + chunkFrameOffset, m);
-                                };
-}
-
 template <typename Callback>
 void AudioMIDIBlockDispatcher::processInChunks (Callback&& process)
 {
-    chunkFrameOffset = 0;
-    const auto numFrames = nextOutputBlock.getNumFrames();
+    auto numFrames = nextOutputBlock.getNumFrames();
     CHOC_ASSERT (numFrames == nextInputBlock.getNumFrames());
     fetchMIDIBlockFromFIFO (numFrames);
     nextOutputBlock.clear();
@@ -240,20 +218,16 @@ void AudioMIDIBlockDispatcher::processInChunks (Callback&& process)
             process (Block { nextInputBlock.getFrameRange (chunkToDo),
                              nextOutputBlock.getFrameRange (chunkToDo),
                              choc::span<const choc::midi::ShortMessage> (midiMessages.data() + midiStart,
-                                                                         midiMessages.data() + endOfMIDI),
-                             midiOutputMessageCallback });
+                                                                         midiMessages.data() + endOfMIDI) });
 
-            chunkFrameOffset += chunkToDo.size();
             frameRange.start = chunkToDo.end;
             midiStart = endOfMIDI;
         }
     }
     else
     {
-        process (Block { nextInputBlock, nextOutputBlock, {}, midiOutputMessageCallback });
+        process (Block { nextInputBlock, nextOutputBlock, {} });
     }
-
-    CHOC_ASSERT(chunkFrameOffset <= numFrames);
 }
 
 inline void AudioMIDIBlockDispatcher::fetchMIDIBlockFromFIFO (uint32_t numFramesNeeded)

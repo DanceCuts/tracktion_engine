@@ -8,7 +8,7 @@
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -26,8 +26,8 @@ public:
 
     juce::String getSelectableDescription() override;
 
-    BeatPosition getStartBeatNumber() const       { return startBeat; }
-    void setStartBeat (BeatPosition);
+    double getStartBeatNumber() const       { return startBeat; }
+    void setStartBeat (double);
 
     int getPitch() const                    { return pitch; }
     void setPitch (int);
@@ -42,7 +42,7 @@ public:
     ClipPosition getPosition() const override;
 
     juce::ValueTree state;
-    juce::CachedValue<BeatPosition> startBeat;
+    juce::CachedValue<double> startBeat;
     juce::CachedValue<int> pitch;
     juce::CachedValue<bool> accidentalsSharp;
     juce::CachedValue<Scale::ScaleType> scale;
@@ -58,4 +58,4 @@ inline bool operator< (const PitchSetting& p1, const PitchSetting& p2) noexcept
     return p1.startBeat.get() < p2.startBeat.get();
 }
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine

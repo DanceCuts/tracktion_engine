@@ -7,7 +7,7 @@
 */
 
 
-namespace tracktion { inline namespace engine
+namespace tracktion_engine
 {
 
 //==============================================================================
@@ -423,4 +423,4 @@ protected:
     float attackRate = 0.0f, decayRate = 0.0f, releaseRate = 0.0f;
 };
 
-}} // namespace tracktion { inline namespace engine
+} // namespace tracktion_engine
