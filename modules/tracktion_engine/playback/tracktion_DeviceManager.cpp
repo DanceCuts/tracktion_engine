@@ -7,6 +7,7 @@
 
     Tracktion Engine uses a GPL/commercial licence - see LICENCE.md for details.
 */
+#include <JuceHeader.h>
 
 juce::AudioDeviceManager* gDeviceManager = nullptr; // TODO
 
@@ -1063,9 +1064,9 @@ double DeviceManager::getOutputLatencySeconds() const
     return outputLatencyTime;
 }
 
-void DeviceManager::audioDeviceIOCallback (const float** inputChannelData, int numInputChannels,
-                                           float** outputChannelData, int totalNumOutputChannels,
-                                           int numSamples)
+void DeviceManager::audioDeviceIOCallbackWithContext(const float* const* inputChannelData, int numInputChannels,
+                                                     float* const* outputChannelData, int totalNumOutputChannels,
+                                                     int numSamples, const juce::AudioIODeviceCallbackContext& context)
 {
     // Some interfaces ask for blocks larger than the current buffer size so in
     // these cases we need to render the buffer in chunks
@@ -1099,8 +1100,8 @@ void DeviceManager::audioDeviceIOCallback (const float** inputChannelData, int n
     }
 }
 
-void DeviceManager::audioDeviceIOCallbackInternal (const float** inputChannelData, int numInputChannels,
-                                                   float** outputChannelData, int totalNumOutputChannels,
+void DeviceManager::audioDeviceIOCallbackInternal (const float* const* inputChannelData, int numInputChannels,
+                                                   float* const* outputChannelData, int totalNumOutputChannels,
                                                    int numSamples)
 {
     jassert (numSamples <= maxBlockSize);
@@ -1133,7 +1134,7 @@ void DeviceManager::audioDeviceIOCallbackInternal (const float** inputChannelDat
                 const juce::ScopedLock sl (contextLock);
 
                 for (auto wi : waveInputs)
-                    wi->consumeNextAudioBlock (inputChannelData, numInputChannels, numSamples, streamTime);
+                    wi->consumeNextAudioBlock (const_cast<const float**>(inputChannelData), numInputChannels, numSamples, streamTime);
 
                 for (int i = totalNumOutputChannels; --i >= 0;)
                     if (auto dest = outputChannelData[i])
@@ -1144,7 +1145,7 @@ void DeviceManager::audioDeviceIOCallbackInternal (const float** inputChannelDat
                 blockStreamTime = { streamTime, streamTime + blockLength };
 
                 for (auto c : activeContexts)
-                    c->fillNextNodeBlock (outputChannelData, totalNumOutputChannels, numSamples);
+                    c->fillNextNodeBlock (const_cast<float**>(outputChannelData), totalNumOutputChannels, numSamples);
             }
 
             for (int i = totalNumOutputChannels; --i >= 0;)

@@ -81,11 +81,12 @@ public:
     void processBlock (juce::AudioBuffer<float>& buffer)
     {
         if (callback != nullptr)
-            callback->audioDeviceIOCallback (buffer.getArrayOfReadPointers(),
-                                             std::min (buffer.getNumChannels(), audioIf.parameters.inputChannels),
-                                             buffer.getArrayOfWritePointers(),
-                                             std::min (buffer.getNumChannels(), audioIf.parameters.inputChannels),
-                                             buffer.getNumSamples());
+            callback->audioDeviceIOCallbackWithContext (buffer.getArrayOfReadPointers(),
+                                                        std::min (buffer.getNumChannels(), audioIf.parameters.inputChannels),
+                                                        buffer.getArrayOfWritePointers(),
+                                                        std::min (buffer.getNumChannels(), audioIf.parameters.inputChannels),
+                                                        buffer.getNumSamples(),
+														AudioIODeviceCallbackContext{});
     }
 
     void settingsChanged()
