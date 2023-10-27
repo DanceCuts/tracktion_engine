@@ -102,7 +102,7 @@ protected:
     {
         CRASH_TRACER
         if (!reader) 
-            return;
+            return false;
         
         auto numLeft = totalNumSamples - numSamplesRead;
         auto numToDo = (int) std::min ((SampleCount) 32768, numLeft);
