@@ -101,6 +101,9 @@ protected:
     bool renderNextBlock() override
     {
         CRASH_TRACER
+        if (!reader) 
+            return;
+        
         auto numLeft = totalNumSamples - numSamplesRead;
         auto numToDo = (int) std::min ((SampleCount) 32768, numLeft);
 
