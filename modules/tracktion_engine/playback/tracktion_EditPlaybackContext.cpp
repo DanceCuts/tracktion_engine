@@ -456,6 +456,9 @@ void EditPlaybackContext::clearNodes()
 void EditPlaybackContext::createNode()
 {
     CRASH_TRACER
+    if (!nodePlaybackContext)
+        return;
+
     // Reset this until it's updated by the play graph
     audiblePlaybackTime = transport.getCurrentPosition();
     
@@ -474,6 +477,8 @@ void EditPlaybackContext::createNode()
     
     cnp.includeBypassedPlugins = ! edit.engine.getEngineBehaviour().shouldBypassedPluginsBeRemovedFromPlaybackGraph();
     auto editNode = createNodeForEdit (*this, audiblePlaybackTime, cnp);
+    if (!editNode)
+        return;
 
     const auto& tempoSections = edit.tempoSequence.getTempoSections();
     const bool hasTempoChanged = tempoSections.getChangeCount() != lastTempoSections.getChangeCount();
