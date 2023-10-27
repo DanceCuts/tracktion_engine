@@ -705,7 +705,7 @@ void EditPlaybackContext::fillNextNodeBlock (float** allChannels, int numChannel
     nodePlaybackContext->updateReferenceSampleRange (numSamples);
     
     // Sync this playback context with a master context
-    if (nodeContextToSyncTo && nodePlaybackContext->playHead.isPlaying() && nodeContextToSyncTo->getNodePlayHead() != nullptr)
+    if (nodeContextToSyncTo && contextSyncroniser && nodePlaybackContext->playHead.isPlaying() && nodeContextToSyncTo->getNodePlayHead() != nullptr)
     {
         jassert (contextSyncroniser);
         jassert (nodeContextToSyncTo->getNodePlayHead() != nullptr);
